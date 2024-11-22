@@ -1,0 +1,8 @@
+{
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "rules": {
+    "@typescript-eslint/no-explicit-any": "off", // Permite el uso de `any` sin errores
+    "no-var": "off", // Permite el uso de `var` sin errores
+    "@next/next/no-head-element": "off" // Permite el uso de `<head>` en lugar de `Head`
+  }
+}

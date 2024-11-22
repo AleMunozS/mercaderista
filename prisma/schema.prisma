@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  user_id    Int        @id @default(autoincrement())
+  username   String     @unique
+  password   String
+  email      String     @unique
+  role       Role
+  created_at DateTime   @default(now())
+  last_login DateTime?
+  status     Status
+  audit_logs AuditLog[] @relation("UserActions")
+}
+
+model Parent {
+  parent_id Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  phone     String    @unique
+  address   String
+  students  Student[]
+  payments  Payment[]
+}
+
+model Student {
+  student_id  Int          @id @default(autoincrement())
+  name        String
+  grade       String
+  parent_id   Int
+  parent      Parent       @relation(fields: [parent_id], references: [parent_id])
+  enrollments Enrollment[]
+  fees        Fee[]
+  attendance  Attendance[]
+  discounts   Discount[]
+}
+
+model Enrollment {
+  enrollment_id   Int      @id @default(autoincrement())
+  student_id      Int
+  grade           String
+  academic_year   String
+  enrollment_date DateTime @default(now())
+  student         Student  @relation(fields: [student_id], references: [student_id])
+}
+
+model Fee {
+  fee_id      Int       @id @default(autoincrement())
+  description String
+  amount      Float
+  due_date    DateTime
+  student_id  Int
+  student     Student   @relation(fields: [student_id], references: [student_id])
+  payments    Payment[]
+  is_paid     Boolean   @default(false)
+}
+
+model Payment {
+  payment_id     Int           @id @default(autoincrement())
+  parent_id      Int
+  fee_id         Int
+  amount         Float
+  date           DateTime      @default(now())
+  status         PaymentStatus
+  payment_method PaymentMethod
+  parent         Parent        @relation(fields: [parent_id], references: [parent_id])
+  fee            Fee           @relation(fields: [fee_id], references: [fee_id])
+}
+
+model Employee {
+  employee_id Int       @id @default(autoincrement())
+  name        String
+  position    String
+  salary      Float
+  start_date  DateTime?
+  end_date    DateTime?
+  salaries    Salary[]
+  email       String    @unique
+  phone       String
+}
+
+model Salary {
+  salary_id   Int          @id @default(autoincrement())
+  employee_id Int
+  amount      Float
+  date        DateTime     @default(now())
+  status      SalaryStatus
+  employee    Employee     @relation(fields: [employee_id], references: [employee_id])
+}
+
+model Attendance {
+  attendance_id Int              @id @default(autoincrement())
+  student_id    Int
+  date          DateTime
+  status        AttendanceStatus
+  student       Student          @relation(fields: [student_id], references: [student_id])
+}
+
+model Discount {
+  discount_id Int      @id @default(autoincrement())
+  student_id  Int
+  amount      Float
+  description String
+  start_date  DateTime
+  end_date    DateTime
+  student     Student  @relation(fields: [student_id], references: [student_id])
+}
+
+model AuditLog {
+  log_id      Int      @id @default(autoincrement())
+  user_id     Int
+  action      String
+  timestamp   DateTime @default(now())
+  description String
+  user        User     @relation("UserActions", fields: [user_id], references: [user_id])
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PaymentMethod {
+  CASH
+  CREDIT_CARD
+  DEBIT_CARD
+  TRANSFER
+}
+
+enum SalaryStatus {
+  PAID
+  PENDING
+  FAILED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}

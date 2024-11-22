@@ -1,0 +1,54 @@
+name: Deploy EscuelasApp
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    env:
+      HOME: /home/github-runner-ubuntu
+      PM2_HOME: /home/github-runner-ubuntu/.pm2
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Set up environment variables
+        run: |
+          echo "DATABASE_URL=postgres://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ secrets.DB_NAME }}" > .env
+          echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" >> .env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+          echo "NEXTAUTH_URL=http://localhost:3000" >> .env
+          echo "NEXT_BUILD_WORKERS=2" >> .env
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Next.js application
+        run: npm run build
+
+      - name: Run Prisma migrations
+        env:
+          DATABASE_URL: postgres://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@localhost:5432/${{ secrets.DB_NAME }}
+        run: npx prisma migrate deploy
+
+      - name: Start Application with PM2
+        run: |
+          cd /home/github-runner-ubuntu/actions-runner/_work/Administracion-Escuelas/Administracion-Escuelas
+          pm2 restart nextjs-app || pm2 start ecosystem.config.js
+          pm2 save
+
+      - name: Verify PM2 Status
+        run: pm2 status
+
+      - name: Check PM2 Logs
+        run: pm2 logs nextjs-app --lines 20
