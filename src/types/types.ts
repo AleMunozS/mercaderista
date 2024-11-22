@@ -60,6 +60,14 @@ export interface Foto {
   voucherId: number;
   url: string;
 }
+export interface VoucherLine {
+  id: number;
+  voucherId: number;
+  itemId: number;
+  cantidad: number;
+  precio?: number;
+  item: Item;
+}
 
 export interface Voucher {
   id: number;
@@ -69,18 +77,24 @@ export interface Voucher {
   usuario: Usuario;
   local: Local;
   createdAt: string;
-  items: Item[];
+  voucherLines: VoucherLine[];
   fotos: Foto[];
+}
+
+export interface VoucherLineInput {
+  itemId: number;
+  cantidad: number;
+  precio?: number;
 }
 
 export interface VoucherFormInputValues {
   tipo: string;
   usuarioId: number;
   localId: number;
-  items: Item[];
+  voucherLines: VoucherLineInput[];
   fotos: Foto[];
-  // Campos adicionales para agregar items y fotos
-  itemNombre?: string;
+  // Campos adicionales para agregar voucherLines y fotos
+  itemId?: number;
   itemCantidad?: number;
   itemPrecio?: number;
 }

@@ -51,7 +51,7 @@ export async function POST(request: Request) {
     }
 
     // Validar y preparar las voucherLines (si se incluyen)
-    let validVoucherLines = [];
+    const validVoucherLines = [];
     if (voucherLines && voucherLines.length > 0) {
       for (const line of voucherLines) {
         const { itemId, cantidad, precio } = line;
