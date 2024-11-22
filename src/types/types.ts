@@ -97,3 +97,10 @@ export interface EventoFormInputValues {
   usuarioId: number;
   mensaje: string;
 }
+
+export interface SummaryData {
+  totalUsuarios: number;
+  totalLocales: number;
+  totalVouchers: number;
+  totalEventos: number;
+}

@@ -38,6 +38,7 @@ const AppSider: React.FC<AppSiderProps> = ({ collapsed }) => {
       icon: <DashboardOutlined />,
       label: <Link href="/dashboard">Dashboard</Link>,
     },
+  
     {
       key: "/usuarios",
       icon: <UserOutlined />,
@@ -63,7 +64,7 @@ const AppSider: React.FC<AppSiderProps> = ({ collapsed }) => {
       icon: <FileSearchOutlined />,
       label: <Link href="/eventos">Eventos</Link>,
     },
-    
+   
   ];
 
   const selectedKey =
