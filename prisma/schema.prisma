@@ -42,24 +42,32 @@ model Asistencia {
 }
 
 model Voucher {
-  id        Int          @id @default(autoincrement())
-  tipo      String       // "inventario" o "merma"
-  usuario   Usuario      @relation(fields: [usuarioId], references: [id])
-  usuarioId Int
-  local     Local        @relation(fields: [localId], references: [id])
-  localId   Int
-  createdAt DateTime     @default(now())
-  items     Item[]
-  fotos     Foto[]
+  id          Int           @id @default(autoincrement())
+  tipo        String        // "inventario" o "merma"
+  usuario     Usuario       @relation(fields: [usuarioId], references: [id])
+  usuarioId   Int
+  local       Local         @relation(fields: [localId], references: [id])
+  localId     Int
+  createdAt   DateTime      @default(now())
+  voucherLines VoucherLine[]
+  fotos       Foto[]
+}
+
+model VoucherLine {
+  id         Int          @id @default(autoincrement())
+  voucher    Voucher      @relation(fields: [voucherId], references: [id])
+  voucherId  Int
+  item       Item         @relation(fields: [itemId], references: [id])
+  itemId     Int
+  cantidad   Int
+  precio     Float?
 }
 
 model Item {
-  id        Int          @id @default(autoincrement())
-  voucher   Voucher      @relation(fields: [voucherId], references: [id])
-  voucherId Int
-  nombre    String
-  cantidad  Int
-  precio    Float?
+  id          Int           @id @default(autoincrement())
+  nombre      String
+  itemCode    String         @unique
+  voucherLines VoucherLine[] // Relación inversa hacia VoucherLine
 }
 
 model Foto {
@@ -77,3 +85,4 @@ model Evento {
   mensaje   String
   createdAt DateTime     @default(now())
 }
+
