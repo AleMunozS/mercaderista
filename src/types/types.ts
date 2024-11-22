@@ -1,96 +1,99 @@
-// src/types/types.ts
-
-import type { Dayjs } from "dayjs";
-import { Fee, Student, Payment } from "@prisma/client";
-import {
-  Enrollment as PrismaEnrollment,
-  Employee as PrismaEmployee,
-} from "@prisma/client";
-import dayjs from "dayjs";
-
-export type PaymentFormValues = Omit<Payment, "payment_id" | "date"> & {
-  student_id?: number;
-};
-
-
-export type EnrollmentFormValues = Omit<
-  PrismaEnrollment,
-  "enrollment_id" | "enrollment_date"
->;
-
-export type PaymentFormInputValues = PaymentFormValues;
-
-export interface FeeFormInputValues {
-  description: string;
-  amount: number;
-  due_date: Dayjs | null;
-  student_id: number;
-}
-
-export interface FeeFormValues {
-  description: string;
-  amount: number;
-  due_date: string;
-  student_id: number;
-}
-
-export interface FeeExtended extends Fee {
-  student: Student & {
-    parent: Parent;
-  };
-  payments: Payment[];
-  total_paid: number;
-  remaining_amount: number;
-  is_paid: boolean;
-}
-
-
-export interface Parent {
-  name: string;
+export interface Usuario {
+  id: number;
+  nombre: string;
   email: string;
-  phone: string;
-  address: string;
+  roles: string;
 }
 
-export interface PaymentExtended extends Payment {
-  parent: Parent;
-  fee: Fee;
-}
-
-export interface EnrollmentExtended extends PrismaEnrollment {
-  student: Student & {
-    parent: Parent;
-  };
-}
-
-export interface EmployeeExtended extends PrismaEmployee {
-  _futureExtension?: Record<string, unknown>;
-}
-
-export interface EmployeeFormInputValues {
-  name: string;
+export interface UsuarioFormInputValues {
+  nombre: string;
   email: string;
-  phone: string;
-  position: string;
-  salary: number;
-  start_date: dayjs.Dayjs | null;
+  password?: string;
+  roles: string;
 }
 
-export interface EmployeeFormValues {
-  name: string;
-  email: string;
-  phone: string;
-  position: string;
-  salary: number;
-  start_date: string;
+export interface Local {
+  id: number;
+  nombre: string;
+  direccion: string;
+  supermercado: string;
 }
 
-export interface FeesResponse {
-  data: FeeExtended[];
-  pagination: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
+export interface LocalFormInputValues {
+  nombre: string;
+  direccion: string;
+  supermercado: string;
+}
+
+
+export interface Asistencia {
+  id: number;
+  usuarioId: number;
+  localId: number;
+  usuario: Usuario;
+  local: Local;
+  checkInTime: string;
+  checkInGeoLocation: string;
+  checkOutTime?: string;
+  checkOutGeoLocation?: string;
+}
+
+export interface AsistenciaFormInputValues {
+  usuarioId: number;
+  localId: number;
+  checkInTime: any; // dayjs object
+  checkInGeoLocation: string;
+  checkOutTime?: any; // dayjs object
+  checkOutGeoLocation?: string;
+}
+
+export interface Item {
+  id: number;
+  voucherId: number;
+  nombre: string;
+  cantidad: number;
+  precio?: number;
+}
+
+export interface Foto {
+  id: number;
+  voucherId: number;
+  url: string;
+}
+
+export interface Voucher {
+  id: number;
+  tipo: string;
+  usuarioId: number;
+  localId: number;
+  usuario: Usuario;
+  local: Local;
+  createdAt: string;
+  items: Item[];
+  fotos: Foto[];
+}
+
+export interface VoucherFormInputValues {
+  tipo: string;
+  usuarioId: number;
+  localId: number;
+  items: Item[];
+  fotos: Foto[];
+  // Campos adicionales para agregar items y fotos
+  itemNombre?: string;
+  itemCantidad?: number;
+  itemPrecio?: number;
+}
+
+export interface Evento {
+  id: number;
+  usuarioId: number;
+  usuario: Usuario;
+  mensaje: string;
+  createdAt: string;
+}
+
+export interface EventoFormInputValues {
+  usuarioId: number;
+  mensaje: string;
 }

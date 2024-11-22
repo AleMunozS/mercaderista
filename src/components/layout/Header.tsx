@@ -29,9 +29,9 @@ const AppHeader: React.FC<AppHeaderProps> = ({ toggleSidebar }) => {
         style={{ marginRight: "16px" }}
       />
       <Title level={3} style={{ color: "#fff", margin: 0 }}>
-        Gestión escolar
+        Administración de mercancía
       </Title>
-      <Button type="primary">Agregar Pago</Button>
+      <Button type="primary">Cerrar Sesión</Button>
     </Header>
   );
 };

@@ -1,159 +1,79 @@
-generator client {
-  provider = "prisma-client-js"
-}
+// prisma/schema.prisma
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-model User {
-  user_id    Int        @id @default(autoincrement())
-  username   String     @unique
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Usuario {
+  id         Int          @id @default(autoincrement())
+  nombre     String
+  email      String       @unique
   password   String
-  email      String     @unique
-  role       Role
-  created_at DateTime   @default(now())
-  last_login DateTime?
-  status     Status
-  audit_logs AuditLog[] @relation("UserActions")
+  roles      String
+  asistencia Asistencia[]
+  vouchers   Voucher[]
+  eventos    Evento[]
 }
 
-model Parent {
-  parent_id Int       @id @default(autoincrement())
-  name      String
-  email     String    @unique
-  phone     String    @unique
-  address   String
-  students  Student[]
-  payments  Payment[]
+model Local {
+  id         Int          @id @default(autoincrement())
+  nombre     String
+  direccion  String
+  supermercado String
+  asistencia Asistencia[]
+  vouchers   Voucher[]
 }
 
-model Student {
-  student_id  Int          @id @default(autoincrement())
-  name        String
-  grade       String
-  parent_id   Int
-  parent      Parent       @relation(fields: [parent_id], references: [parent_id])
-  enrollments Enrollment[]
-  fees        Fee[]
-  attendance  Attendance[]
-  discounts   Discount[]
+model Asistencia {
+  id                 Int          @id @default(autoincrement())
+  usuario            Usuario      @relation(fields: [usuarioId], references: [id])
+  usuarioId          Int
+  local              Local        @relation(fields: [localId], references: [id])
+  localId            Int
+  checkInTime        DateTime
+  checkInGeoLocation String
+  checkOutTime       DateTime?
+  checkOutGeoLocation String?
 }
 
-model Enrollment {
-  enrollment_id   Int      @id @default(autoincrement())
-  student_id      Int
-  grade           String
-  academic_year   String
-  enrollment_date DateTime @default(now())
-  student         Student  @relation(fields: [student_id], references: [student_id])
+model Voucher {
+  id        Int          @id @default(autoincrement())
+  tipo      String       // "inventario" o "merma"
+  usuario   Usuario      @relation(fields: [usuarioId], references: [id])
+  usuarioId Int
+  local     Local        @relation(fields: [localId], references: [id])
+  localId   Int
+  createdAt DateTime     @default(now())
+  items     Item[]
+  fotos     Foto[]
 }
 
-model Fee {
-  fee_id      Int       @id @default(autoincrement())
-  description String
-  amount      Float
-  due_date    DateTime
-  student_id  Int
-  student     Student   @relation(fields: [student_id], references: [student_id])
-  payments    Payment[]
-  is_paid     Boolean   @default(false)
+model Item {
+  id        Int          @id @default(autoincrement())
+  voucher   Voucher      @relation(fields: [voucherId], references: [id])
+  voucherId Int
+  nombre    String
+  cantidad  Int
+  precio    Float?
 }
 
-model Payment {
-  payment_id     Int           @id @default(autoincrement())
-  parent_id      Int
-  fee_id         Int
-  amount         Float
-  date           DateTime      @default(now())
-  status         PaymentStatus
-  payment_method PaymentMethod
-  parent         Parent        @relation(fields: [parent_id], references: [parent_id])
-  fee            Fee           @relation(fields: [fee_id], references: [fee_id])
+model Foto {
+  id        Int          @id @default(autoincrement())
+  voucher   Voucher      @relation(fields: [voucherId], references: [id])
+  voucherId Int
+  url       String
+  createdAt DateTime     @default(now())
 }
 
-model Employee {
-  employee_id Int       @id @default(autoincrement())
-  name        String
-  position    String
-  salary      Float
-  start_date  DateTime?
-  end_date    DateTime?
-  salaries    Salary[]
-  email       String    @unique
-  phone       String
-}
-
-model Salary {
-  salary_id   Int          @id @default(autoincrement())
-  employee_id Int
-  amount      Float
-  date        DateTime     @default(now())
-  status      SalaryStatus
-  employee    Employee     @relation(fields: [employee_id], references: [employee_id])
-}
-
-model Attendance {
-  attendance_id Int              @id @default(autoincrement())
-  student_id    Int
-  date          DateTime
-  status        AttendanceStatus
-  student       Student          @relation(fields: [student_id], references: [student_id])
-}
-
-model Discount {
-  discount_id Int      @id @default(autoincrement())
-  student_id  Int
-  amount      Float
-  description String
-  start_date  DateTime
-  end_date    DateTime
-  student     Student  @relation(fields: [student_id], references: [student_id])
-}
-
-model AuditLog {
-  log_id      Int      @id @default(autoincrement())
-  user_id     Int
-  action      String
-  timestamp   DateTime @default(now())
-  description String
-  user        User     @relation("UserActions", fields: [user_id], references: [user_id])
-}
-
-enum Role {
-  ADMIN
-  TEACHER
-  STUDENT
-  PARENT
-}
-
-enum Status {
-  ACTIVE
-  INACTIVE
-}
-
-enum PaymentStatus {
-  PENDING
-  COMPLETED
-  FAILED
-}
-
-enum PaymentMethod {
-  CASH
-  CREDIT_CARD
-  DEBIT_CARD
-  TRANSFER
-}
-
-enum SalaryStatus {
-  PAID
-  PENDING
-  FAILED
-}
-
-enum AttendanceStatus {
-  PRESENT
-  ABSENT
-  EXCUSED
+model Evento {
+  id        Int          @id @default(autoincrement())
+  usuario   Usuario      @relation(fields: [usuarioId], references: [id])
+  usuarioId Int
+  mensaje   String
+  createdAt DateTime     @default(now())
 }

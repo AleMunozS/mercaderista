@@ -1,17 +1,14 @@
-// src/components/layout/Sider.tsx
-
 "use client";
 
 import React from "react";
 import { Layout, Menu } from "antd";
 import {
-  DollarOutlined,
-  TeamOutlined,
-  MailOutlined,
-  FileTextOutlined,
-  BookOutlined,
   UserOutlined,
-  ReadOutlined,
+  ShopOutlined,
+  CalendarOutlined,
+  FileTextOutlined,
+  FileSearchOutlined,
+  PictureOutlined,
 } from "@ant-design/icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -27,49 +24,34 @@ const AppSider: React.FC<AppSiderProps> = ({ collapsed }) => {
 
   const menuItems = [
     {
-      key: "/fees",
-      icon: <DollarOutlined />,
-      label: <Link href="/fees">Gestión de Cuotas</Link>,
-    },
-    {
-      key: "/payments",
-      icon: <TeamOutlined />,
-      label: <Link href="/payments">Pagos</Link>,
-    },
-    {
-      key: "/contact",
-      icon: <MailOutlined />,
-      label: <Link href="/contact">Contacto con Padres</Link>,
-    },
-    {
-      key: "/reports",
-      icon: <FileTextOutlined />,
-      label: <Link href="/reports">Informes</Link>,
-    },
-    {
-      key: "/parents",
-      icon: <TeamOutlined />,
-      label: <Link href="/parents">Padres</Link>,
-    },
-    {
-      key: "/enrollments",
-      icon: <BookOutlined />,
-      label: <Link href="/enrollments">Inscripciones</Link>,
-    },
-    {
-      key: "/employees",
+      key: "/usuarios",
       icon: <UserOutlined />,
-      label: <Link href="/employees">Empleados</Link>,
+      label: <Link href="/usuarios">Usuarios</Link>,
     },
     {
-      key: "/students",
-      icon: <ReadOutlined />,
-      label: <Link href="/students">Estudiantes</Link>,
+      key: "/locales",
+      icon: <ShopOutlined />,
+      label: <Link href="/locales">Locales</Link>,
+    },
+    {
+      key: "/asistencias",
+      icon: <CalendarOutlined />,
+      label: <Link href="/asistencias">Asistencias</Link>,
+    },
+    {
+      key: "/vouchers",
+      icon: <FileTextOutlined />,
+      label: <Link href="/vouchers">Vouchers</Link>,
+    },
+    {
+      key: "/eventos",
+      icon: <FileSearchOutlined />,
+      label: <Link href="/eventos">Eventos</Link>,
     },
   ];
 
   const selectedKey =
-    menuItems.find((item) => pathname.startsWith(item.key))?.key || "/fees";
+    menuItems.find((item) => pathname.startsWith(item.key))?.key || "/usuarios";
 
   return (
     <Sider
