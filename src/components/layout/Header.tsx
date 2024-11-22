@@ -2,7 +2,9 @@
 
 import React from "react";
 import { Layout, Button, Typography } from "antd";
-import { MenuOutlined } from "@ant-design/icons";
+import { LogoutOutlined, MenuOutlined } from "@ant-design/icons";
+import { signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
 
 const { Header } = Layout;
 const { Title } = Typography;
@@ -12,10 +14,25 @@ interface AppHeaderProps {
 }
 
 const AppHeader: React.FC<AppHeaderProps> = ({ toggleSidebar }) => {
+  const { data: session, status } = useSession();
+
+  // Mostrar nada si no hay sesión
+  if (!session && status !== "loading") {
+    return null;
+  }
+
+  const handleLogout = async () => {
+    try {
+      await signOut({ callbackUrl: "/auth/login" }); // Redirigir después de cerrar sesión
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    }
+  };
+
   return (
     <Header
       style={{
-        background: "#1890ff",
+        background: "#1DA57A",
         padding: "0 20px",
         display: "flex",
         justifyContent: "space-between",
@@ -31,7 +48,15 @@ const AppHeader: React.FC<AppHeaderProps> = ({ toggleSidebar }) => {
       <Title level={3} style={{ color: "#fff", margin: 0 }}>
         Administración de mercancía
       </Title>
-      <Button type="primary">Cerrar Sesión</Button>
+      <Button
+        type="primary"
+        danger
+        icon={<LogoutOutlined />}
+        onClick={handleLogout}
+        style={{  }}
+      >
+        Cerrar Sesión
+      </Button>
     </Header>
   );
 };

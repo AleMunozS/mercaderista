@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import SessionProviderWrapper from "@/components/auth/SessionProviderWrapper";
 import AppHeader from "@/components/layout/Header";
 import AppSider from "@/components/layout/Sider";
-import { Layout } from "antd";
+import { ConfigProvider, Layout } from "antd";
 import { Content } from "antd/es/layout/layout";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 
@@ -46,6 +46,20 @@ export default function RootLayout({
       <body>
         <AntdRegistry>
           <SessionProviderWrapper>
+          <ConfigProvider
+  theme={{
+    token: {
+      colorPrimary: "#1DA57A",
+      colorSuccess: "#52c41a",
+      colorError: "#ff4d4f",
+      colorWarning: "#faad14",
+      colorInfo: "#1890ff",
+      borderRadius: 8,
+      fontSize: 16,
+      // Añade más tokens según tus necesidades
+    },
+  }}
+>
             <Layout style={{ minHeight: "100vh" }}>
               <AppHeader toggleSidebar={toggleSidebar} />
               <Layout>
@@ -57,6 +71,7 @@ export default function RootLayout({
                 </Layout>
               </Layout>
             </Layout>
+            </ConfigProvider>
           </SessionProviderWrapper>
         </AntdRegistry>
       </body>

@@ -1,3 +1,5 @@
+// src/components/layout/Sider.tsx
+
 "use client";
 
 import React from "react";
@@ -9,9 +11,11 @@ import {
   FileTextOutlined,
   FileSearchOutlined,
   PictureOutlined,
+  DashboardOutlined, // Importar ícono de dashboard
 } from "@ant-design/icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 const { Sider } = Layout;
 
@@ -20,9 +24,20 @@ interface AppSiderProps {
 }
 
 const AppSider: React.FC<AppSiderProps> = ({ collapsed }) => {
+  const { data: session, status } = useSession();
   const pathname = usePathname();
 
+  // Mostrar nada si no hay sesión
+  if (!session && status !== "loading") {
+    return null;
+  }
+
   const menuItems = [
+    {
+      key: "/dashboard",
+      icon: <DashboardOutlined />,
+      label: <Link href="/dashboard">Dashboard</Link>,
+    },
     {
       key: "/usuarios",
       icon: <UserOutlined />,
@@ -48,10 +63,11 @@ const AppSider: React.FC<AppSiderProps> = ({ collapsed }) => {
       icon: <FileSearchOutlined />,
       label: <Link href="/eventos">Eventos</Link>,
     },
+    
   ];
 
   const selectedKey =
-    menuItems.find((item) => pathname.startsWith(item.key))?.key || "/usuarios";
+    menuItems.find((item) => pathname.startsWith(item.key))?.key || "/dashboard";
 
   return (
     <Sider
@@ -59,7 +75,7 @@ const AppSider: React.FC<AppSiderProps> = ({ collapsed }) => {
       collapsed={collapsed}
       width={200}
       style={{
-        background: "#fff",
+        
         padding: "0",
         margin: "0",
       }}

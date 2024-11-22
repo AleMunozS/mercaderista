@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-
+import { prisma } from "@/lib/prisma"; 
+import bcrypt from 'bcrypt';
 const predefinedUser = {
   username: "superadmin",
   password: "superadmin",
@@ -15,6 +16,25 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+
+        try {
+          const user = await prisma.usuario.findUnique({
+            where: { email: credentials?.username },
+          });
+
+          if (user && (await bcrypt.compare(credentials?.password || "", user.password))) {
+            return {
+              id: user.id.toString(),
+              name: user.nombre,
+              email: user.email,
+              role: user.roles,
+            };
+          }
+        } catch (error) {
+          console.error("Error during database validation:", error);
+        }
+
+
         if (
           credentials?.username === predefinedUser.username &&
           credentials?.password === predefinedUser.password
