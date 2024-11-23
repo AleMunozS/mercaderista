@@ -2,18 +2,103 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 // Obtener todos los vouchers con sus relaciones
-export async function GET() {
+// Obtener todos los vouchers con sus relaciones
+// Obtener todos los vouchers con sus relaciones
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+
+    // Extraer parámetros de búsqueda
+    const id = url.searchParams.get('id');
+    const tipo = url.searchParams.get('tipo');
+    const usuarioNombre = url.searchParams.get('usuarioNombre');
+    const localNombre = url.searchParams.get('localNombre');
+    const fechaDesde = url.searchParams.get('fechaDesde');
+    const fechaHasta = url.searchParams.get('fechaHasta');
+    const sortBy = url.searchParams.get('sortBy') || 'id';
+    const sortOrder = url.searchParams.get('sortOrder') || 'asc';
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const limit = parseInt(url.searchParams.get('limit') || '10', 10);
+
+    // Construir el objeto 'where' dinámicamente según los parámetros proporcionados
+    const where: any = {};
+
+    if (id) {
+      where.id = Number(id);
+    }
+    if (tipo) {
+      where.tipo = {
+        equals: tipo,
+        mode: 'insensitive',
+      };
+    }
+    if (usuarioNombre) {
+      where.usuario = {
+        nombre: {
+          contains: usuarioNombre,
+          mode: 'insensitive',
+        },
+      };
+    }
+    if (localNombre) {
+      where.local = {
+        nombre: {
+          contains: localNombre,
+          mode: 'insensitive',
+        },
+      };
+    }
+    if (fechaDesde && fechaHasta) {
+      where.createdAt = {
+        gte: new Date(fechaDesde),
+        lte: new Date(fechaHasta),
+      };
+    } else if (fechaDesde) {
+      where.createdAt = {
+        gte: new Date(fechaDesde),
+      };
+    } else if (fechaHasta) {
+      where.createdAt = {
+        lte: new Date(fechaHasta),
+      };
+    }
+
+    // Campos permitidos para ordenación
+    const allowedSortFields = ['id', 'tipo', 'createdAt'];
+
+    // Validar 'sortBy'
+    const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'id';
+
+    // Obtener el total de registros sin paginación
+    const totalVouchers = await prisma.voucher.count({
+      where,
+    });
+
+    // Obtener los vouchers con paginación y ordenación
     const vouchers = await prisma.voucher.findMany({
+      where,
       include: {
         usuario: true,
         local: true,
-        voucherLines: { include: { item: true } }, // Incluye las líneas del voucher y los items asociados
+        voucherLines: { include: { item: true } },
         fotos: true,
       },
+      orderBy: {
+        [sortField]: sortOrder,
+      },
+      skip: (page - 1) * limit,
+      take: limit,
     });
 
-    return NextResponse.json(vouchers);
+    // Construir la respuesta con paginación
+    return NextResponse.json({
+      data: vouchers,
+      pagination: {
+        page,
+        limit,
+        total: totalVouchers,
+      },
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
