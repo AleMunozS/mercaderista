@@ -11,7 +11,8 @@ import {
   FileTextOutlined,
   FileSearchOutlined,
   PictureOutlined,
-  DashboardOutlined, // Importar ícono de dashboard
+  DashboardOutlined,
+  AppstoreOutlined, // Importar ícono de dashboard
 } from "@ant-design/icons";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -63,6 +64,11 @@ const AppSider: React.FC<AppSiderProps> = ({ collapsed }) => {
       key: "/eventos",
       icon: <FileSearchOutlined />,
       label: <Link href="/eventos">Eventos</Link>,
+    },
+    {
+      key: "/items", // Nuevo ítem agregado
+      icon: <AppstoreOutlined />,
+      label: <Link href="/items">Items</Link>,
     },
    
   ];
