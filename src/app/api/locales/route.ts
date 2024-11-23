@@ -1,20 +1,43 @@
-import { NextResponse } from 'next/server';
-import {prisma} from '@/lib/prisma';
+// app/api/locales/route.ts (suponiendo que estás usando la estructura de 'app' en Next.js 13+)
+import { NextResponse, NextRequest } from 'next/server';
+import { prisma } from '@/lib/prisma';
 
-// Obtener todos los locales
-export async function GET(request: Request) {
+// Especifica el runtime
+export const runtime = 'nodejs';
+
+// Middleware de CORS
+function cors(request: NextRequest) {
+  const origin = request.headers.get('origin') || '*';
+
+  const headers = new Headers();
+  headers.set('Access-Control-Allow-Origin', origin);
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  headers.set('Access-Control-Max-Age', '86400'); // Opcional
+
+  return headers;
+}
+
+export async function OPTIONS(request: NextRequest) {
+  // Maneja las solicitudes OPTIONS para CORS preflight
+  const headers = cors(request);
+  return new NextResponse(null, { status: 204, headers });
+}
+
+export async function GET(request: NextRequest) {
+  const headers = cors(request);
+
   try {
-    const url = new URL(request.url);
-    const id = url.searchParams.get('id');
-    const nombre = url.searchParams.get('nombre');
-    const direccion = url.searchParams.get('direccion');
-    const supermercado = url.searchParams.get('supermercado');
-    const sortBy = url.searchParams.get('sortBy') || 'id';
-    const sortOrder = url.searchParams.get('sortOrder') || 'asc';
-    const page = parseInt(url.searchParams.get('page') || '1', 10);
-    const limit = parseInt(url.searchParams.get('limit') || '10', 10);
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    const nombre = searchParams.get('nombre');
+    const direccion = searchParams.get('direccion');
+    const supermercado = searchParams.get('supermercado');
+    const sortBy = searchParams.get('sortBy') || 'id';
+    const sortOrder = searchParams.get('sortOrder') || 'asc';
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
 
-    // Construir el objeto 'where' dinámicamente según los parámetros proporcionados
     const where: any = {};
 
     if (id) {
@@ -39,10 +62,8 @@ export async function GET(request: Request) {
       };
     }
 
-    // Calcular el total de registros sin paginación
     const totalLocales = await prisma.local.count({ where });
 
-    // Obtener los locales con paginación y ordenación
     const locales = await prisma.local.findMany({
       where,
       orderBy: {
@@ -52,28 +73,50 @@ export async function GET(request: Request) {
       take: limit,
     });
 
-    // Construir la respuesta con paginación
-    return NextResponse.json({
-      data: locales,
-      pagination: {
-        page,
-        limit,
-        total: totalLocales,
-      },
-    });
+    return new NextResponse(
+      JSON.stringify({
+        data: locales,
+        pagination: {
+          page,
+          limit,
+          total: totalLocales,
+        },
+      }),
+      {
+        status: 200,
+        headers,
+      }
+    );
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Error al obtener locales' }, { status: 500 });
+    return new NextResponse(
+      JSON.stringify({ error: 'Error al obtener locales' }),
+      {
+        status: 500,
+        headers,
+      }
+    );
   }
 }
 
-// Crear un nuevo local
-export async function POST(request: Request) {
-  const data = await request.json();
+export async function POST(request: NextRequest) {
+  const headers = cors(request);
+
   try {
+    const data = await request.json();
     const local = await prisma.local.create({ data });
-    return NextResponse.json(local);
+    return new NextResponse(JSON.stringify(local), {
+      status: 201,
+      headers,
+    });
   } catch (error) {
-    return NextResponse.json({ error: 'Error al crear local' }, { status: 500 });
+    console.error(error);
+    return new NextResponse(
+      JSON.stringify({ error: 'Error al crear local' }),
+      {
+        status: 500,
+        headers,
+      }
+    );
   }
 }

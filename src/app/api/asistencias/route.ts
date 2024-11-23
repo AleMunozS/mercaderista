@@ -1,9 +1,34 @@
 // src/app/api/asistencias/route.ts
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(request: Request) {
+// Especificar el runtime para asegurar que se ejecute en Node.js
+export const runtime = 'nodejs';
+
+// Función para agregar encabezados CORS
+function cors(request: NextRequest) {
+  const origin = request.headers.get('origin') || '*';
+
+  const headers = new Headers();
+  headers.set('Access-Control-Allow-Origin', origin);
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  headers.set('Access-Control-Max-Age', '86400'); // Opcional: cachea la respuesta preflight por 24 horas
+
+  return headers;
+}
+
+// Manejo del método OPTIONS para solicitudes preflight
+export async function OPTIONS(request: NextRequest) {
+  const headers = cors(request);
+  return new NextResponse(null, { status: 204, headers });
+}
+
+// Método GET
+export async function GET(request: NextRequest) {
+  const headers = cors(request);
+
   const { searchParams } = new URL(request.url);
 
   try {
@@ -107,35 +132,47 @@ export async function GET(request: Request) {
     });
 
     // Construir la respuesta con paginación
-    return NextResponse.json({
-      data: asistencias,
-      pagination: {
-        page,
-        limit,
-        total: totalAsistencias,
-      },
-    });
+    return new NextResponse(
+      JSON.stringify({
+        data: asistencias,
+        pagination: {
+          page,
+          limit,
+          total: totalAsistencias,
+        },
+      }),
+      {
+        status: 200,
+        headers,
+      }
+    );
   } catch (error) {
-    console.error("Error al obtener asistencias:", error);
-    return NextResponse.json(
-      { error: 'Error al obtener asistencias' },
-      { status: 500 }
+    console.error('Error al obtener asistencias:', error);
+    return new NextResponse(
+      JSON.stringify({ error: 'Error al obtener asistencias' }),
+      { status: 500, headers }
     );
   }
 }
 
-export async function POST(request: Request) {
-  const data = await request.json();
+// Método POST
+export async function POST(request: NextRequest) {
+  const headers = cors(request);
+
   try {
+    const data = await request.json();
     const asistencia = await prisma.asistencia.create({
       data,
     });
-    return NextResponse.json(asistencia);
+    return new NextResponse(JSON.stringify(asistencia), {
+      status: 201,
+      headers,
+    });
   } catch (error) {
-    console.error("Error al crear asistencia:", error);
-    return NextResponse.json(
-      { error: 'Error al crear asistencia' },
-      { status: 500 }
+    console.error('Error al crear asistencia:', error);
+    return new NextResponse(
+      JSON.stringify({ error: 'Error al crear asistencia' }),
+      { status: 500, headers }
     );
   }
 }
