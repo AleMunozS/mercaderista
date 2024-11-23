@@ -118,3 +118,7 @@ export interface SummaryData {
   totalVouchers: number;
   totalEventos: number;
 }
+
+export interface EventoWithUsuarioNombre extends Evento {
+  usuarioNombre: string;
+}

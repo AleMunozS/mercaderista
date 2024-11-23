@@ -9,8 +9,8 @@ import { Content } from "antd/es/layout/layout";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 
 export const metadata = {
-  title: "Arboledas - Administración",
-  description: "Plataforma de administración escolar",
+  title: "Administración de mercancía",
+  description: "Administración de mercancía",
 };
 
 export default function RootLayout({
