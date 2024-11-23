@@ -15,7 +15,7 @@ const AsistenciaReport: React.FC = () => {
     setLoading(true);
     try {
       const response = await axios.get("/api/asistencias?limit=10"); // Asegúrate de que tu API soporte este parámetro
-      setAsistencias(response.data);
+      setAsistencias(response.data.data);
     } catch (error) {
       message.error("Error al cargar las asistencias.");
       console.error(error);

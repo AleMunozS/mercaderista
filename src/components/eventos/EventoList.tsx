@@ -57,7 +57,7 @@ const EventoList: React.FC = () => {
   const fetchUsuarios = async () => {
     try {
       const response = await axios.get("/api/usuarios"); // Asegúrate de tener esta API
-      setUsuarios(response.data);
+      setUsuarios(response.data.data);
     } catch (error) {
       message.error("Error al cargar los usuarios.");
       console.error(error);
