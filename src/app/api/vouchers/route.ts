@@ -1,11 +1,29 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-// Obtener todos los vouchers con sus relaciones
-// Obtener todos los vouchers con sus relaciones
+// Middleware para configurar CORS
+function configureCORS(request: Request) {
+  const origin = request.headers.get('origin') || '*';
+
+  const headers = new Headers();
+  headers.set('Access-Control-Allow-Origin', origin);
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  headers.set('Access-Control-Max-Age', '86400'); // Cache de preflight por 1 día
+
+  return headers;
+}
+
+// Manejo del método OPTIONS para preflight requests
+export async function OPTIONS(request: Request) {
+  const headers = configureCORS(request);
+  return new NextResponse(null, { status: 204, headers });
+}
+
 // Obtener todos los vouchers con sus relaciones
 export async function GET(request: Request) {
   try {
+    const headers = configureCORS(request);
     const url = new URL(request.url);
 
     // Extraer parámetros de búsqueda
@@ -91,25 +109,30 @@ export async function GET(request: Request) {
     });
 
     // Construir la respuesta con paginación
-    return NextResponse.json({
-      data: vouchers,
-      pagination: {
-        page,
-        limit,
-        total: totalVouchers,
+    return NextResponse.json(
+      {
+        data: vouchers,
+        pagination: {
+          page,
+          limit,
+          total: totalVouchers,
+        },
       },
-    });
+      { headers }
+    );
   } catch (error) {
     console.error(error);
+    const headers = configureCORS(request);
     return NextResponse.json(
       { error: 'Error al obtener vouchers' },
-      { status: 500 }
+      { status: 500, headers }
     );
   }
 }
 
 // Crear un nuevo voucher
 export async function POST(request: Request) {
+  const headers = configureCORS(request);
   const { tipo, usuarioId, localId, voucherLines, fotos } = await request.json();
 
   try {
@@ -120,7 +143,7 @@ export async function POST(request: Request) {
     if (!usuario) {
       return NextResponse.json(
         { error: 'Usuario no encontrado' },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
@@ -131,42 +154,39 @@ export async function POST(request: Request) {
     if (!local) {
       return NextResponse.json(
         { error: 'Local no encontrado' },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
-    // Validar y preparar las voucherLines (si se incluyen)
-    const validVoucherLines = [];
-    if (voucherLines && voucherLines.length > 0) {
-      for (const line of voucherLines) {
-        const { itemId, cantidad, precio } = line;
+    // Validar y procesar las voucherLines
+    const validVoucherLines = voucherLines?.map(async (line: any) => {
+      const { itemId, cantidad, precio } = line;
 
-        // Validar que el item existe
-        const item = await prisma.item.findUnique({
-          where: { id: itemId },
-        });
-        if (!item) {
-          return NextResponse.json(
-            { error: `Item con ID ${itemId} no encontrado` },
-            { status: 400 }
-          );
-        }
-
-        // Agregar la línea válida
-        validVoucherLines.push({ itemId, cantidad, precio });
+      // Validar que el item existe
+      const item = await prisma.item.findUnique({ where: { id: itemId } });
+      if (!item) {
+        throw new Error(`Item con ID ${itemId} no encontrado`);
       }
-    }
 
-    // Crear el voucher
+      return { itemId, cantidad, precio };
+    }) || [];
+
+    const resolvedVoucherLines = await Promise.all(validVoucherLines);
+
+    // Crear el voucher con las fotos correctamente estructuradas
     const voucher = await prisma.voucher.create({
       data: {
         tipo,
         usuarioId,
         localId,
         voucherLines: {
-          create: validVoucherLines, // Crear las líneas validadas
+          create: resolvedVoucherLines,
         },
-        fotos: fotos ? { create: fotos } : undefined, // Crear las fotos si se proporcionan
+        fotos: {
+          create: fotos.map((foto: string) => ({
+            url: foto,
+          })),
+        },
       },
       include: {
         usuario: true,
@@ -176,12 +196,14 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(voucher);
-  } catch (error) {
-    console.error(error);
+    return NextResponse.json(voucher, { headers });
+  } catch (error: any) {
+    console.error(error.message || error);
     return NextResponse.json(
-      { error: 'Error al crear voucher' },
-      { status: 500 }
+      { error: error.message || 'Error al crear voucher' },
+      { status: 500, headers }
     );
   }
 }
+
+

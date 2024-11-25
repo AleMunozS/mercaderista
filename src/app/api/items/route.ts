@@ -1,6 +1,25 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+
+function cors(request: Request) {
+  const origin = request.headers.get('origin') || '*';
+
+  const headers = new Headers();
+  headers.set('Access-Control-Allow-Origin', origin);
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  headers.set('Access-Control-Max-Age', '86400'); // Cache para preflight
+
+  return headers;
+}
+
+
+export async function OPTIONS(request: Request) {
+  const headers = cors(request);
+  return new NextResponse(null, { status: 204, headers });
+}
+
 // Obtener todos los items con sus VoucherLines y aplicar filtros de búsqueda
 export async function GET(request: Request) {
   try {
@@ -47,17 +66,24 @@ export async function GET(request: Request) {
     });
 
     // Construir la respuesta con paginación
-    return NextResponse.json({
-      data: items,
-      pagination: {
-        page,
-        limit,
-        total: totalItems,
-      },
-    });
+    return new NextResponse(
+      JSON.stringify({
+        data: items,
+        pagination: {
+          page,
+          limit,
+          total: totalItems,
+        },
+      }),
+      { status: 200, headers: cors(request) }
+    );
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Error al obtener items' }, { status: 500 });
+    return new NextResponse(
+      JSON.stringify({ error: 'Error al obtener items' }),
+      { status: 500, headers: cors(request) }
+    );
+    
   }
 }
 
@@ -74,9 +100,17 @@ export async function POST(request: Request) {
     });
 
 
-    return NextResponse.json({ item });
+    return new NextResponse(
+      JSON.stringify({ item }),
+      { status: 201, headers: cors(request) }
+    );
+    
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Error al crear item o voucher line' }, { status: 500 });
+    return new NextResponse(
+      JSON.stringify({ error: 'Error al crear item o voucher line' }),
+      { status: 500, headers: cors(request) }
+    );
+    
   }
 }
