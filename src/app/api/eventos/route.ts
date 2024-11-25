@@ -1,8 +1,29 @@
 // app/api/eventos/route.ts
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import type { NextRequest } from 'next/server';
+
+// Especificar el runtime para asegurar que se ejecute en Node.js (opcional)
+export const runtime = 'nodejs';
+
+// Función para agregar encabezados CORS
+function cors(request: NextRequest) {
+  const origin = request.headers.get('origin') || '*';
+
+  const headers = new Headers();
+  headers.set('Access-Control-Allow-Origin', origin);
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  headers.set('Access-Control-Max-Age', '86400'); // Opcional: cachea la respuesta preflight por 24 horas
+
+  return headers;
+}
+
+// Manejo del método OPTIONS para solicitudes preflight
+export async function OPTIONS(request: NextRequest) {
+  const headers = cors(request);
+  return new NextResponse(null, { status: 204, headers });
+}
 
 // Definir tipos para los posibles parámetros de búsqueda, ordenamiento y paginación
 interface EventoQueryParams {
@@ -17,7 +38,10 @@ interface EventoQueryParams {
   limit: number; // Número de elementos por página, ahora obligatorio
 }
 
+// Método GET
 export async function GET(request: NextRequest) {
+  const headers = cors(request);
+
   try {
     // Extraer los parámetros de consulta
     const { searchParams } = new URL(request.url);
@@ -99,26 +123,34 @@ export async function GET(request: NextRequest) {
     // Obtener el total de eventos para la paginación
     const total = await prisma.evento.count({ where });
 
-    return NextResponse.json({
-      data: eventos,
-      pagination: {
-        total,
-        page: query.page,
-        limit: query.limit,
-        totalPages: Math.ceil(total / query.limit),
-      },
-    });
+    return new NextResponse(
+      JSON.stringify({
+        data: eventos,
+        pagination: {
+          total,
+          page: query.page,
+          limit: query.limit,
+          totalPages: Math.ceil(total / query.limit),
+        },
+      }),
+      {
+        status: 200,
+        headers,
+      }
+    );
   } catch (error) {
     console.error('Error al obtener eventos:', error);
-    return NextResponse.json(
-      { error: 'Error al obtener eventos' },
-      { status: 500 }
+    return new NextResponse(
+      JSON.stringify({ error: 'Error al obtener eventos' }),
+      { status: 500, headers }
     );
   }
 }
 
 // Función para manejar la solicitud POST (crear un nuevo evento)
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const headers = cors(request);
+
   try {
     const data = await request.json();
 
@@ -126,12 +158,14 @@ export async function POST(request: Request) {
     // Por ejemplo, asegurarse de que usuarioId exista, mensaje no esté vacío, etc.
 
     const evento = await prisma.evento.create({ data });
-    return NextResponse.json(evento, { status: 201 });
+    return new NextResponse(JSON.stringify(evento), { status: 201, headers });
   } catch (error) {
     console.error('Error al crear evento:', error);
-    return NextResponse.json(
-      { error: 'Error al crear evento' },
-      { status: 500 }
+    return new NextResponse(
+      JSON.stringify({ error: 'Error al crear evento' }),
+      { status: 500, headers }
     );
   }
 }
+
+// (Opcional) Si necesitas manejar otros métodos como PUT o DELETE, puedes agregarlos de manera similar

@@ -12,7 +12,7 @@ function cors(request: NextRequest) {
 
   const headers = new Headers();
   headers.set('Access-Control-Allow-Origin', origin);
-  headers.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   headers.set('Access-Control-Max-Age', '86400'); // Opcional: cachea la respuesta preflight por 24 horas
 
@@ -172,6 +172,70 @@ export async function POST(request: NextRequest) {
     console.error('Error al crear asistencia:', error);
     return new NextResponse(
       JSON.stringify({ error: 'Error al crear asistencia' }),
+      { status: 500, headers }
+    );
+  }
+}
+
+// Método PUT
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  const headers = cors(request);
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id');
+
+  if (!id) {
+    return new NextResponse(JSON.stringify({ error: 'ID no proporcionado' }), {
+      status: 400,
+      headers,
+    });
+  }
+
+  const asistenciaId = Number(id);
+
+  try {
+    const data = await request.json();
+    const asistencia = await prisma.asistencia.update({
+      where: { id: asistenciaId },
+      data,
+    });
+    return new NextResponse(JSON.stringify(asistencia), {
+      status: 200,
+      headers,
+    });
+  } catch (error) {
+    console.error('Error al actualizar asistencia:', error);
+    return new NextResponse(
+      JSON.stringify({ error: 'Error al actualizar asistencia' }),
+      { status: 500, headers }
+    );
+  }
+}
+
+// Método DELETE
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  const headers = cors(request);
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id');
+
+  if (!id) {
+    return new NextResponse(JSON.stringify({ error: 'ID no proporcionado' }), {
+      status: 400,
+      headers,
+    });
+  }
+
+  const asistenciaId = Number(id);
+
+  try {
+    await prisma.asistencia.delete({ where: { id: asistenciaId } });
+    return new NextResponse(JSON.stringify({ message: 'Asistencia eliminada' }), {
+      status: 200,
+      headers,
+    });
+  } catch (error) {
+    console.error('Error al eliminar asistencia:', error);
+    return new NextResponse(
+      JSON.stringify({ error: 'Error al eliminar asistencia' }),
       { status: 500, headers }
     );
   }
