@@ -58,7 +58,7 @@ const HomePage: React.FC = () => {
   return (
     <Layout>
       <Content style={{ padding: "20px" }}>
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        {/* <Space direction="vertical" size="large" style={{ width: "100%" }}>
           <Row gutter={16}>
             <Col xs={24} sm={8}>
               <Card>
@@ -93,7 +93,7 @@ const HomePage: React.FC = () => {
               pagination={false}
             />
           </Card>
-        </Space>
+        </Space> */}
       </Content>
     </Layout>
   );
