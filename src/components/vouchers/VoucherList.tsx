@@ -187,7 +187,7 @@ const VoucherList: React.FC = () => {
           : undefined,
       filters: [
         { text: "Inventario", value: "inventario" },
-        { text: "Venta", value: "venta" },
+        { text: "Merma", value: "merma" },
         // Agrega más opciones si es necesario
       ],
       onFilter: (value, record) => record.tipo === value,
@@ -263,7 +263,7 @@ const VoucherList: React.FC = () => {
             <Form.Item label="Tipo" name="tipo">
               <Select placeholder="Selecciona un tipo" allowClear>
                 <Option value="inventario">Inventario</Option>
-                <Option value="venta">Venta</Option>
+                <Option value="merma">merma</Option>
                 {/* Agrega más opciones si es necesario */}
               </Select>
             </Form.Item>

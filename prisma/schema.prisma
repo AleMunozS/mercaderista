@@ -43,19 +43,19 @@ model Asistencia {
 
 model Voucher {
   id          Int           @id @default(autoincrement())
-  tipo        String        // "inventario" o "merma"
-  usuario     Usuario       @relation(fields: [usuarioId], references: [id])
+  tipo        String
+  usuario     Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   usuarioId   Int
-  local       Local         @relation(fields: [localId], references: [id])
+  local       Local         @relation(fields: [localId], references: [id], onDelete: Cascade)
   localId     Int
   createdAt   DateTime      @default(now())
-  voucherLines VoucherLine[]
-  fotos       Foto[]
+  voucherLines VoucherLine[] // No defines onDelete aquí
+  fotos       Foto[]         // No defines onDelete aquí
 }
 
 model VoucherLine {
   id         Int          @id @default(autoincrement())
-  voucher    Voucher      @relation(fields: [voucherId], references: [id])
+  voucher    Voucher      @relation(fields: [voucherId], references: [id], onDelete: Cascade) // Aquí configuras onDelete
   voucherId  Int
   item       Item         @relation(fields: [itemId], references: [id])
   itemId     Int
@@ -72,7 +72,7 @@ model Item {
 
 model Foto {
   id        Int          @id @default(autoincrement())
-  voucher   Voucher      @relation(fields: [voucherId], references: [id])
+  voucher   Voucher      @relation(fields: [voucherId], references: [id], onDelete: Cascade) // Aquí configuras onDelete
   voucherId Int
   url       String
   createdAt DateTime     @default(now())
