@@ -192,7 +192,9 @@ const VoucherList: React.FC = () => {
       ],
       onFilter: (value, record) => record.tipo === value,
       render: (tipo: string) => (
-        <Tag color={tipo === "inventario" ? "green" : "red"}>{tipo}</Tag>
+        <Tag color={tipo.toLowerCase() === "inventario" ? "green" : "red"}>
+        {tipo}
+      </Tag>
       ),
     },
     {
