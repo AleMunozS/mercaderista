@@ -13,11 +13,24 @@ import { SummaryData } from "@/types/types";
 import axios from "axios";
 import AsistenciaReport from "@/components/dashboard/AsistenciaReport";
 import SummaryCard from "@/components/dashboard/SummaryCard";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 const DashboardPage: React.FC = () => {
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
+  const { data: session, status } = useSession(); 
 
+
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push('/auth/login'); // Redirige al login si no hay sesión
+    }
+  }, [status, router]);
+
+  
   const fetchSummary = async () => {
     setLoading(true);
     try {
