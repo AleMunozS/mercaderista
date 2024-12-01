@@ -9,8 +9,8 @@ import { Content } from "antd/es/layout/layout";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 
 export const metadata = {
-  title: "Administración de mercancía",
-  description: "Administración de mercancía",
+  title: "Administración de Mercaderistas Agropack",
+  description: "Administración de Mercaderistas Agropack",
 };
 
 export default function RootLayout({
