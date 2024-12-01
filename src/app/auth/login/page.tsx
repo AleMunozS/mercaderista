@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { Button, Form, Input, Typography, message } from "antd";
 
 const { Title } = Typography;
@@ -10,14 +9,14 @@ const { Title } = Typography;
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
 
   const onFinish = async (values: { username: string; password: string }) => {
     setLoading(true);
     const { username, password } = values;
 
     const result = await signIn("credentials", {
-      redirect: false,
+      redirect: true, // Redirección automática
+      callbackUrl: "/", // URL de redirección
       username,
       password,
     });
@@ -29,7 +28,6 @@ export default function LoginPage() {
       message.error("Error de autenticación");
     } else {
       message.success("Inicio de sesión exitoso");
-      router.push("/");
     }
   };
 
