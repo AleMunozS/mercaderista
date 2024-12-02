@@ -53,6 +53,7 @@ export interface Item {
   nombre: string;
   cantidad: number;
   precio?: number;
+  itemCode: string
 }
 
 export interface Foto {
