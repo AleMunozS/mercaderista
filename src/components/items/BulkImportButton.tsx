@@ -1,12 +1,11 @@
-// components/items/BulkImportButton.tsx
-
 "use client";
 
 import React, { useState } from "react";
 import { Button, Upload, message, Modal } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { UploadOutlined, DownloadOutlined } from "@ant-design/icons"; // Importación del nuevo icono
 import * as XLSX from "xlsx";
 import axios from "axios";
+import { saveAs } from "file-saver";
 
 const BulkImportButton: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -14,6 +13,28 @@ const BulkImportButton: React.FC = () => {
     Array<{ nombre: string; itemCode: string }> | null
   >(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const downloadTemplate = () => {
+    const templateData = [
+      {
+        nombre: "",
+        "itemCode": "",
+      },
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Plantilla");
+    const excelBuffer = XLSX.write(workbook, {
+      type: "array",
+      bookType: "xlsx",
+    });
+    const blob = new Blob([excelBuffer], {
+      type:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    saveAs(blob, "Plantilla_Items.xlsx");
+  };
 
   // Función para procesar el archivo Excel
   const handleFile = (file: File) => {
@@ -134,6 +155,15 @@ const BulkImportButton: React.FC = () => {
           Importar desde Excel
         </Button>
       </Upload>
+
+      <Button
+        icon={<DownloadOutlined />}
+        type="default"
+        onClick={downloadTemplate}
+        style={{ marginLeft: "10px" }}
+      >
+        Descargar Plantilla
+      </Button>
 
       <Modal
         title="Vista Previa de la Importación"
