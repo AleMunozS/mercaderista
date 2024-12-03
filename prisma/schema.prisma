@@ -23,8 +23,8 @@ model Usuario {
 model Local {
   id         Int          @id @default(autoincrement())
   nombre     String
-  direccion  String
-  supermercado String
+  direccion  String?
+  supermercado String?
   asistencia Asistencia[]
   vouchers   Voucher[]
 }

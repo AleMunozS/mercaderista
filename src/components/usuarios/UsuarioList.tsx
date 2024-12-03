@@ -12,16 +12,21 @@ import {
   Select,
   Row,
   Col,
+  Progress,
+  Modal,
 } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import axios from "axios";
 import Link from "next/link";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 interface Usuario {
   id: number;
   nombre: string;
   email: string;
   roles: string;
+  // password?: string; // Asegúrate de no incluir la contraseña en la interfaz si no la necesitas
 }
 
 const { Option } = Select;
@@ -54,6 +59,13 @@ const UsuarioList: React.FC = () => {
     showSizeChanger: true,
     pageSizeOptions: ["10", "20", "50", "100"],
   });
+
+  // Estados para exportación
+  const [exporting, setExporting] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<number>(0);
+  const [exportModalVisible, setExportModalVisible] = useState<boolean>(false);
+  const [exportTotalPages, setExportTotalPages] = useState<number>(0);
+  const [exportFetchedPages, setExportFetchedPages] = useState<number>(0);
 
   // Función para obtener usuarios con filtros, orden y paginación
   const fetchUsuarios = async () => {
@@ -109,7 +121,7 @@ const UsuarioList: React.FC = () => {
   const onFinish = (values: any) => {
     const newFilters: typeof filters = {
       page: 1, // Reiniciar a la primera página al aplicar filtros
-      limit: 10,
+      limit: filters.limit,
     };
 
     if (values.id) newFilters.id = Number(values.id);
@@ -125,7 +137,7 @@ const UsuarioList: React.FC = () => {
     form.resetFields();
     setFilters({
       page: 1,
-      limit: 10,
+      limit: filters.limit,
     });
   };
 
@@ -153,6 +165,76 @@ const UsuarioList: React.FC = () => {
       page: pagination.current || 1,
       limit: pagination.pageSize || 10,
     }));
+  };
+
+  // Función para exportar a Excel
+  const exportToExcel = async () => {
+    setExporting(true);
+    setExportModalVisible(true);
+    setExportFetchedPages(0);
+
+    try {
+      // Primero, obtener el total de registros para calcular el número de páginas
+      const initialParams = { ...filters, page: 1, limit: 1 };
+      const initialResponse = await axios.get("/api/usuarios", {
+        params: initialParams,
+      });
+      const total = initialResponse.data.pagination.total;
+      const limit = 100; // Usar un límite alto para reducir el número de solicitudes
+      const totalPages = Math.ceil(total / limit);
+      setExportTotalPages(totalPages);
+
+      const allUsuarios: Usuario[] = [];
+
+      // Función para obtener una página específica
+      const fetchPage = async (page: number) => {
+        const params = { ...filters, page, limit };
+        const response = await axios.get("/api/usuarios", { params });
+        return response.data.data as Usuario[];
+      };
+
+      // Iterar secuencialmente para actualizar el progreso de manera clara
+      for (let page = 1; page <= totalPages; page++) {
+        const data = await fetchPage(page);
+        allUsuarios.push(...data);
+        setExportFetchedPages(page);
+        setExportProgress(Math.round((page / totalPages) * 100));
+      }
+
+      // Generar el archivo Excel
+      const worksheet = XLSX.utils.json_to_sheet(
+        allUsuarios.map((usuario) => ({
+          ID: usuario.id,
+          Nombre: usuario.nombre,
+          Email: usuario.email,
+          Roles: usuario.roles,
+          // Asegúrate de **no incluir** la contraseña si está presente
+          // Contraseña: usuario.password, // OMITIR
+        }))
+      );
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Usuarios");
+      const excelBuffer = XLSX.write(workbook, {
+        type: "array",
+        bookType: "xlsx",
+      });
+      const blob = new Blob([excelBuffer], {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      saveAs(blob, "Usuarios.xlsx");
+
+      message.success("Exportación a Excel completada exitosamente.");
+    } catch (error) {
+      message.error("Error al exportar los datos a Excel.");
+      console.error(error);
+    } finally {
+      setExporting(false);
+      setExportModalVisible(false);
+      setExportProgress(0);
+      setExportTotalPages(0);
+      setExportFetchedPages(0);
+    }
   };
 
   // Definir las columnas con tipos correctos y ordenación
@@ -231,7 +313,7 @@ const UsuarioList: React.FC = () => {
       {/* Formulario de filtros */}
       <Form
         form={form}
-        layout="vertical"
+        layout="vertical" // Cambia a "vertical" para un diseño más limpio
         onFinish={onFinish}
         style={{ marginBottom: 16 }}
       >
@@ -268,13 +350,15 @@ const UsuarioList: React.FC = () => {
                 optionFilterProp="children"
                 filterOption={(input, option) =>
                   typeof option?.children === "string" &&
-                  //@ts-expect-error not affecting de code
-                  option.children.toLowerCase().includes(input.toLowerCase())
+                  (option.children as string)
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
                 }
               >
                 {/* Reemplaza con tus roles reales */}
                 <Option value="admin">Admin</Option>
                 <Option value="usuario">Usuario</Option>
+                {/* Añade más opciones según sea necesario */}
               </Select>
             </Form.Item>
           </Col>
@@ -288,6 +372,13 @@ const UsuarioList: React.FC = () => {
               </Button>
               <Button htmlType="button" onClick={onReset}>
                 Limpiar
+              </Button>
+              <Button
+                type="default"
+                onClick={exportToExcel}
+                disabled={exporting}
+              >
+                Exportar a Excel
               </Button>
             </Space>
           </Col>
@@ -303,6 +394,19 @@ const UsuarioList: React.FC = () => {
         onChange={handleTableChange}
         pagination={pagination}
       />
+
+      {/* Modal de progreso de exportación */}
+      <Modal
+        title="Exportando a Excel"
+        visible={exportModalVisible}
+        footer={null}
+        closable={false}
+      >
+        <p>
+          Exportando registros: {exportFetchedPages} / {exportTotalPages} páginas
+        </p>
+        <Progress percent={exportProgress} />
+      </Modal>
     </div>
   );
 };

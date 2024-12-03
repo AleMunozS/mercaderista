@@ -11,10 +11,14 @@ import {
   Input,
   Row,
   Col,
+  Progress,
+  Modal,
 } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import axios from "axios";
 import Link from "next/link";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 interface Local {
   id: number;
@@ -51,6 +55,13 @@ const LocalList: React.FC = () => {
     showSizeChanger: true,
     pageSizeOptions: ["10", "20", "50", "100"],
   });
+
+  // Estados para exportación
+  const [exporting, setExporting] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<number>(0);
+  const [exportModalVisible, setExportModalVisible] = useState<boolean>(false);
+  const [exportTotalPages, setExportTotalPages] = useState<number>(0);
+  const [exportFetchedPages, setExportFetchedPages] = useState<number>(0);
 
   // Función para obtener locales con filtros, orden y paginación
   const fetchLocales = async () => {
@@ -153,6 +164,74 @@ const LocalList: React.FC = () => {
     }));
   };
 
+  // Función para exportar a Excel
+  const exportToExcel = async () => {
+    setExporting(true);
+    setExportModalVisible(true);
+    setExportFetchedPages(0);
+
+    try {
+      // Primero, obtener el total de registros para calcular el número de páginas
+      const initialParams = { ...filters, page: 1, limit: 1 };
+      const initialResponse = await axios.get("/api/locales", {
+        params: initialParams,
+      });
+      const total = initialResponse.data.pagination.total;
+      const limit = 100; // Usar un límite alto para reducir el número de solicitudes
+      const totalPages = Math.ceil(total / limit);
+      setExportTotalPages(totalPages);
+
+      const allLocales: Local[] = [];
+
+      // Función para obtener una página específica
+      const fetchPage = async (page: number) => {
+        const params = { ...filters, page, limit };
+        const response = await axios.get("/api/locales", { params });
+        return response.data.data as Local[];
+      };
+
+      // Iterar secuencialmente para actualizar el progreso de manera clara
+      for (let page = 1; page <= totalPages; page++) {
+        const data = await fetchPage(page);
+        allLocales.push(...data);
+        setExportFetchedPages(page);
+        setExportProgress(Math.round((page / totalPages) * 100));
+      }
+
+      // Generar el archivo Excel
+      const worksheet = XLSX.utils.json_to_sheet(
+        allLocales.map((local) => ({
+          ID: local.id,
+          Nombre: local.nombre,
+          Dirección: local.direccion,
+          Supermercado: local.supermercado,
+        }))
+      );
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Locales");
+      const excelBuffer = XLSX.write(workbook, {
+        type: "array",
+        bookType: "xlsx",
+      });
+      const blob = new Blob([excelBuffer], {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      saveAs(blob, "Locales.xlsx");
+
+      message.success("Exportación a Excel completada exitosamente.");
+    } catch (error) {
+      message.error("Error al exportar los datos a Excel.");
+      console.error(error);
+    } finally {
+      setExporting(false);
+      setExportModalVisible(false);
+      setExportProgress(0);
+      setExportTotalPages(0);
+      setExportFetchedPages(0);
+    }
+  };
+
   // Definir las columnas con tipos correctos y ordenación
   const columns: ColumnsType<Local> = [
     {
@@ -229,7 +308,7 @@ const LocalList: React.FC = () => {
       {/* Formulario de filtros */}
       <Form
         form={form}
-        layout="vertical"
+        layout="vertical" // Cambia a "vertical" para un diseño más limpio
         onFinish={onFinish}
         style={{ marginBottom: 16 }}
       >
@@ -272,6 +351,13 @@ const LocalList: React.FC = () => {
               <Button htmlType="button" onClick={onReset}>
                 Limpiar
               </Button>
+              <Button
+                type="default"
+                onClick={exportToExcel}
+                disabled={exporting}
+              >
+                Exportar a Excel
+              </Button>
             </Space>
           </Col>
         </Row>
@@ -286,6 +372,19 @@ const LocalList: React.FC = () => {
         onChange={handleTableChange}
         pagination={pagination}
       />
+
+      {/* Modal de progreso de exportación */}
+      <Modal
+        title="Exportando a Excel"
+        visible={exportModalVisible}
+        footer={null}
+        closable={false}
+      >
+        <p>
+          Exportando registros: {exportFetchedPages} / {exportTotalPages} páginas
+        </p>
+        <Progress percent={exportProgress} />
+      </Modal>
     </div>
   );
 };

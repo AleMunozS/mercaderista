@@ -11,10 +11,14 @@ import {
   Input,
   Row,
   Col,
+  Progress,
+  Modal,
 } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import axios from "axios";
 import Link from "next/link";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 interface Item {
   id: number;
@@ -33,6 +37,8 @@ const ItemList: React.FC = () => {
     id?: number;
     nombre?: string;
     itemCode?: string;
+    fechaDesde?: string;
+    fechaHasta?: string;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     page: number;
@@ -51,6 +57,13 @@ const ItemList: React.FC = () => {
     pageSizeOptions: ["10", "20", "50", "100"],
   });
 
+  // Estados para exportación
+  const [exporting, setExporting] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<number>(0);
+  const [exportModalVisible, setExportModalVisible] = useState<boolean>(false);
+  const [exportTotalPages, setExportTotalPages] = useState<number>(0);
+  const [exportFetchedPages, setExportFetchedPages] = useState<number>(0);
+
   // Función para obtener items con filtros, orden y paginación
   const fetchItems = async () => {
     setLoading(true);
@@ -60,6 +73,8 @@ const ItemList: React.FC = () => {
       if (filters.id) params.id = filters.id;
       if (filters.nombre) params.nombre = filters.nombre;
       if (filters.itemCode) params.itemCode = filters.itemCode;
+      if (filters.fechaDesde) params.fechaDesde = filters.fechaDesde;
+      if (filters.fechaHasta) params.fechaHasta = filters.fechaHasta;
       if (filters.sortBy) {
         params.sortBy = filters.sortBy;
         params.sortOrder = filters.sortOrder;
@@ -151,6 +166,73 @@ const ItemList: React.FC = () => {
     }));
   };
 
+  // Función para exportar a Excel
+  const exportToExcel = async () => {
+    setExporting(true);
+    setExportModalVisible(true);
+    setExportFetchedPages(0);
+
+    try {
+      // Primero, obtener el total de registros para calcular el número de páginas
+      const initialParams = { ...filters, page: 1, limit: 1 };
+      const initialResponse = await axios.get("/api/items", {
+        params: initialParams,
+      });
+      const total = initialResponse.data.pagination.total;
+      const limit = 100; // Usar un límite alto para reducir el número de solicitudes
+      const totalPages = Math.ceil(total / limit);
+      setExportTotalPages(totalPages);
+
+      const allItems: Item[] = [];
+
+      // Función para obtener una página específica
+      const fetchPage = async (page: number) => {
+        const params = { ...filters, page, limit };
+        const response = await axios.get("/api/items", { params });
+        return response.data.data as Item[];
+      };
+
+      // Iterar secuencialmente para actualizar el progreso de manera clara
+      for (let page = 1; page <= totalPages; page++) {
+        const data = await fetchPage(page);
+        allItems.push(...data);
+        setExportFetchedPages(page);
+        setExportProgress(Math.round((page / totalPages) * 100));
+      }
+
+      // Generar el archivo Excel
+      const worksheet = XLSX.utils.json_to_sheet(
+        allItems.map((item) => ({
+          ID: item.id,
+          Nombre: item.nombre,
+          "Código de Item": item.itemCode,
+        }))
+      );
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Items");
+      const excelBuffer = XLSX.write(workbook, {
+        type: "array",
+        bookType: "xlsx",
+      });
+      const blob = new Blob([excelBuffer], {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      saveAs(blob, "Items.xlsx");
+
+      message.success("Exportación a Excel completada exitosamente.");
+    } catch (error) {
+      message.error("Error al exportar los datos a Excel.");
+      console.error(error);
+    } finally {
+      setExporting(false);
+      setExportModalVisible(false);
+      setExportProgress(0);
+      setExportTotalPages(0);
+      setExportFetchedPages(0);
+    }
+  };
+
   // Definir las columnas con tipos correctos y ordenación
   const columns: ColumnsType<Item> = [
     {
@@ -189,6 +271,7 @@ const ItemList: React.FC = () => {
             : "descend"
           : undefined,
     },
+    
     {
       title: "Acciones",
       key: "actions",
@@ -215,7 +298,7 @@ const ItemList: React.FC = () => {
       {/* Formulario de filtros */}
       <Form
         form={form}
-        layout="vertical"
+        layout="vertical" // Cambia a "vertical" para un diseño más limpio
         onFinish={onFinish}
         style={{ marginBottom: 16 }}
       >
@@ -251,6 +334,13 @@ const ItemList: React.FC = () => {
               <Button htmlType="button" onClick={onReset}>
                 Limpiar
               </Button>
+              <Button
+                type="default"
+                onClick={exportToExcel}
+                disabled={exporting}
+              >
+                Exportar a Excel
+              </Button>
             </Space>
           </Col>
         </Row>
@@ -265,6 +355,19 @@ const ItemList: React.FC = () => {
         onChange={handleTableChange}
         pagination={pagination}
       />
+
+      {/* Modal de progreso de exportación */}
+      <Modal
+        title="Exportando a Excel"
+        visible={exportModalVisible}
+        footer={null}
+        closable={false}
+      >
+        <p>
+          Exportando registros: {exportFetchedPages} / {exportTotalPages} páginas
+        </p>
+        <Progress percent={exportProgress} />
+      </Modal>
     </div>
   );
 };

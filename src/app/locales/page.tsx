@@ -4,6 +4,7 @@ import React from "react";
 import { Typography, Button } from "antd";
 import Link from "next/link";
 import LocalList from "@/components/locales/LocalList";
+import BulkImportButton from "@/components/locales/BulkImportButton";
 
 
 const { Title } = Typography;
@@ -17,6 +18,7 @@ const LocalesPage: React.FC = () => {
           Agregar Nuevo Local
         </Button>
       </Link>
+      <BulkImportButton />
       <LocalList />
     </div>
   );

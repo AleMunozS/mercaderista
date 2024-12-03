@@ -12,12 +12,16 @@ import {
   DatePicker,
   Row,
   Col,
+  Progress,
+  Modal,
 } from "antd";
 import axios from "axios";
 import Link from "next/link";
 import { Asistencia } from "@/types/types";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import moment from "moment";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const { RangePicker } = DatePicker;
 
@@ -50,6 +54,13 @@ const AsistenciaList: React.FC = () => {
     showSizeChanger: true,
     pageSizeOptions: ["10", "20", "50", "100"],
   });
+
+  // Estados para exportación
+  const [exporting, setExporting] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<number>(0);
+  const [exportModalVisible, setExportModalVisible] = useState<boolean>(false);
+  const [exportTotalPages, setExportTotalPages] = useState<number>(0);
+  const [exportFetchedPages, setExportFetchedPages] = useState<number>(0);
 
   // Función para obtener asistencias con filtros, orden y paginación
   const fetchAsistencias = async () => {
@@ -159,6 +170,77 @@ const AsistenciaList: React.FC = () => {
     }));
   };
 
+  // Función para exportar a Excel
+  const exportToExcel = async () => {
+    setExporting(true);
+    setExportModalVisible(true);
+    setExportFetchedPages(0);
+
+    try {
+      // Primero, obtener el total de registros para calcular el número de páginas
+      const initialParams = { ...filters, page: 1, limit: 1 };
+      const initialResponse = await axios.get("/api/asistencias", {
+        params: initialParams,
+      });
+      const total = initialResponse.data.pagination.total;
+      const limit = 100; // Usar un límite alto para reducir el número de solicitudes
+      const totalPages = Math.ceil(total / limit);
+      setExportTotalPages(totalPages);
+
+      const allAsistencias: Asistencia[] = [];
+
+      // Función para obtener una página específica
+      const fetchPage = async (page: number) => {
+        const params = { ...filters, page, limit };
+        const response = await axios.get("/api/asistencias", { params });
+        return response.data.data as Asistencia[];
+      };
+
+      // Iterar secuencialmente para actualizar el progreso de manera clara
+      for (let page = 1; page <= totalPages; page++) {
+        const data = await fetchPage(page);
+        allAsistencias.push(...data);
+        setExportFetchedPages(page);
+        setExportProgress(Math.round((page / totalPages) * 100));
+      }
+
+      // Generar el archivo Excel
+      const worksheet = XLSX.utils.json_to_sheet(
+        allAsistencias.map((item) => ({
+          ID: item.id,
+          Usuario: item.usuario.nombre,
+          Local: item.local.nombre,
+          "Check-In": new Date(item.checkInTime).toLocaleString(),
+          "Check-Out": item.checkOutTime
+            ? new Date(item.checkOutTime).toLocaleString()
+            : "N/A",
+        }))
+      );
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Asistencias");
+      const excelBuffer = XLSX.write(workbook, {
+        type: "array",
+        bookType: "xlsx",
+      });
+      const blob = new Blob([excelBuffer], {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      saveAs(blob, "Asistencias.xlsx");
+
+      message.success("Exportación a Excel completada exitosamente.");
+    } catch (error) {
+      message.error("Error al exportar los datos a Excel.");
+      console.error(error);
+    } finally {
+      setExporting(false);
+      setExportModalVisible(false);
+      setExportProgress(0);
+      setExportTotalPages(0);
+      setExportFetchedPages(0);
+    }
+  };
+
   // Definir las columnas con tipos correctos y ordenación
   const columns: ColumnsType<Asistencia> = [
     {
@@ -221,7 +303,8 @@ const AsistenciaList: React.FC = () => {
             ? "ascend"
             : "descend"
           : undefined,
-      render: (date: string) => (date ? new Date(date).toLocaleString() : "N/A"),
+      render: (date: string) =>
+        date ? new Date(date).toLocaleString() : "N/A",
     },
     {
       title: "Acciones",
@@ -292,6 +375,13 @@ const AsistenciaList: React.FC = () => {
               <Button htmlType="button" onClick={onReset}>
                 Limpiar
               </Button>
+              <Button
+                type="default"
+                onClick={exportToExcel}
+                disabled={exporting}
+              >
+                Exportar a Excel
+              </Button>
             </Space>
           </Col>
         </Row>
@@ -306,6 +396,19 @@ const AsistenciaList: React.FC = () => {
         onChange={handleTableChange}
         pagination={pagination}
       />
+
+      {/* Modal de progreso de exportación */}
+      <Modal
+        title="Exportando a Excel"
+        visible={exportModalVisible}
+        footer={null}
+        closable={false}
+      >
+        <p>
+          Exportando registros: {exportFetchedPages} / {exportTotalPages} páginas
+        </p>
+        <Progress percent={exportProgress} />
+      </Modal>
     </div>
   );
 };

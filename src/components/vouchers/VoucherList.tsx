@@ -14,12 +14,16 @@ import {
   DatePicker,
   Row,
   Col,
+  Progress,
+  Modal,
 } from "antd";
 import axios from "axios";
 import Link from "next/link";
 import { Voucher } from "@/types/types";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import moment from "moment";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -54,6 +58,13 @@ const VoucherList: React.FC = () => {
     showSizeChanger: true,
     pageSizeOptions: ["10", "20", "50", "100"],
   });
+
+  // Estados para exportación
+  const [exporting, setExporting] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<number>(0);
+  const [exportModalVisible, setExportModalVisible] = useState<boolean>(false);
+  const [exportTotalPages, setExportTotalPages] = useState<number>(0);
+  const [exportFetchedPages, setExportFetchedPages] = useState<number>(0);
 
   // Función para obtener vouchers con filtros, orden y paginación
   const fetchVouchers = async () => {
@@ -160,6 +171,84 @@ const VoucherList: React.FC = () => {
     }));
   };
 
+  // Función para exportar a Excel
+  const exportToExcel = async () => {
+    setExporting(true);
+    setExportModalVisible(true);
+    setExportFetchedPages(0);
+
+    try {
+      // 1. Obtener el total de registros para calcular el número de páginas
+      const initialParams = { ...filters, page: 1, limit: 1 };
+      const initialResponse = await axios.get("/api/vouchers", {
+        params: initialParams,
+      });
+      const total = initialResponse.data.pagination.total;
+      const limit = 100; // Usar un límite alto para reducir el número de solicitudes
+      const totalPages = Math.ceil(total / limit);
+      setExportTotalPages(totalPages);
+
+      const allVouchers: Voucher[] = [];
+
+      // 2. Función para obtener una página específica
+      const fetchPage = async (page: number) => {
+        const params = { ...filters, page, limit };
+        const response = await axios.get("/api/vouchers", { params });
+        return response.data.data as Voucher[];
+      };
+
+      // 3. Iterar secuencialmente para actualizar el progreso de manera clara
+      for (let page = 1; page <= totalPages; page++) {
+        const data = await fetchPage(page);
+        allVouchers.push(...data);
+        setExportFetchedPages(page);
+        setExportProgress(Math.round((page / totalPages) * 100));
+      }
+
+      // 4. Preparar los datos para Excel
+      // Cada fila representará una línea de voucher con información del voucher
+      const excelData = allVouchers.flatMap((voucher) =>
+        voucher.voucherLines.map((line) => ({
+          "ID Voucher": voucher.id,
+          "Tipo": voucher.tipo,
+          "Nombre Usuario": voucher.usuario.nombre,
+          "Nombre Local": voucher.local.nombre,
+          "Fecha": moment(voucher.createdAt).format("YYYY-MM-DD HH:mm:ss"),
+          "ID Línea": line.id,
+          "Item Nombre": line.item.nombre,
+          "Código Item": line.item.itemCode,
+          "Cantidad": line.cantidad,
+          "Precio": line.precio,
+        }))
+      );
+
+      // 5. Generar el archivo Excel
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Vouchers y Líneas");
+      const excelBuffer = XLSX.write(workbook, {
+        type: "array",
+        bookType: "xlsx",
+      });
+      const blob = new Blob([excelBuffer], {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      saveAs(blob, "Vouchers.xlsx");
+
+      message.success("Exportación a Excel completada exitosamente.");
+    } catch (error) {
+      message.error("Error al exportar los datos a Excel.");
+      console.error(error);
+    } finally {
+      setExporting(false);
+      setExportModalVisible(false);
+      setExportProgress(0);
+      setExportTotalPages(0);
+      setExportFetchedPages(0);
+    }
+  };
+
   // Definir las columnas con tipos correctos y ordenación
   const columns: ColumnsType<Voucher> = [
     {
@@ -193,8 +282,8 @@ const VoucherList: React.FC = () => {
       onFilter: (value, record) => record.tipo === value,
       render: (tipo: string) => (
         <Tag color={tipo.toLowerCase() === "inventario" ? "green" : "red"}>
-        {tipo}
-      </Tag>
+          {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+        </Tag>
       ),
     },
     {
@@ -220,7 +309,7 @@ const VoucherList: React.FC = () => {
             ? "ascend"
             : "descend"
           : undefined,
-      render: (date: string) => new Date(date).toLocaleString(),
+      render: (date: string) => moment(date).format("YYYY-MM-DD HH:mm:ss"),
     },
     {
       title: "Acciones",
@@ -248,7 +337,7 @@ const VoucherList: React.FC = () => {
       {/* Formulario de filtros */}
       <Form
         form={form}
-        layout="vertical"
+        layout="vertical" // Cambia a "vertical" para un diseño más limpio
         onFinish={onFinish}
         style={{ marginBottom: 16 }}
       >
@@ -263,9 +352,21 @@ const VoucherList: React.FC = () => {
           {/* Tipo */}
           <Col xs={24} sm={12} md={6}>
             <Form.Item label="Tipo" name="tipo">
-              <Select placeholder="Selecciona un tipo" allowClear>
+              <Select
+                placeholder="Selecciona un tipo"
+                allowClear
+                style={{ width: "100%" }}
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  typeof option?.children === "string" &&
+                  (option.children as string)
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              >
+                {/* Reemplaza con tus tipos reales */}
                 <Option value="inventario">Inventario</Option>
-                <Option value="merma">merma</Option>
+                <Option value="merma">Merma</Option>
                 {/* Agrega más opciones si es necesario */}
               </Select>
             </Form.Item>
@@ -302,6 +403,13 @@ const VoucherList: React.FC = () => {
               <Button htmlType="button" onClick={onReset}>
                 Limpiar
               </Button>
+              <Button
+                type="default"
+                onClick={exportToExcel}
+                disabled={exporting}
+              >
+                Exportar a Excel
+              </Button>
             </Space>
           </Col>
         </Row>
@@ -316,6 +424,19 @@ const VoucherList: React.FC = () => {
         onChange={handleTableChange}
         pagination={pagination}
       />
+
+      {/* Modal de progreso de exportación */}
+      <Modal
+        title="Exportando a Excel"
+        visible={exportModalVisible}
+        footer={null}
+        closable={false}
+      >
+        <p>
+          Exportando registros: {exportFetchedPages} / {exportTotalPages} páginas
+        </p>
+        <Progress percent={exportProgress} />
+      </Modal>
     </div>
   );
 };

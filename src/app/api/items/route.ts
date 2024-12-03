@@ -89,7 +89,7 @@ export async function GET(request: Request) {
 
 
 export async function POST(request: Request) {
-  const { nombre, itemCode, voucherId, cantidad, precio } = await request.json();
+  const { nombre, itemCode } = await request.json();
 
   try {
     

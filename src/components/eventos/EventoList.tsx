@@ -13,12 +13,15 @@ import {
   DatePicker,
   Col,
   Row,
+  Progress,
+  Modal,
 } from "antd";
-import type { ColumnsType, TablePaginationConfig } from 'antd/es/table';
+import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import axios from "axios";
 import Link from "next/link";
 import { Evento, Usuario } from "@/types/types";
-
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -34,7 +37,8 @@ const EventoList: React.FC = () => {
     id?: number;
     usuarioId?: number;
     mensaje?: string;
-    createdAt?: string;
+    fechaDesde?: string;
+    fechaHasta?: string;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
     page: number;
@@ -50,8 +54,15 @@ const EventoList: React.FC = () => {
     pageSize: 10,
     total: 0,
     showSizeChanger: true,
-    pageSizeOptions: ['10', '20', '50', '100'],
+    pageSizeOptions: ["10", "20", "50", "100"],
   });
+
+  // Estados para exportación
+  const [exporting, setExporting] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<number>(0);
+  const [exportModalVisible, setExportModalVisible] = useState<boolean>(false);
+  const [exportTotalPages, setExportTotalPages] = useState<number>(0);
+  const [exportFetchedPages, setExportFetchedPages] = useState<number>(0);
 
   // Obtener la lista de usuarios para el filtro
   const fetchUsuarios = async () => {
@@ -73,7 +84,8 @@ const EventoList: React.FC = () => {
       if (filters.id) params.id = filters.id;
       if (filters.usuarioId) params.usuarioId = filters.usuarioId;
       if (filters.mensaje) params.mensaje = filters.mensaje;
-      if (filters.createdAt) params.createdAt = filters.createdAt;
+      if (filters.fechaDesde) params.fechaDesde = filters.fechaDesde;
+      if (filters.fechaHasta) params.fechaHasta = filters.fechaHasta;
       if (filters.sortBy) {
         params.sortBy = filters.sortBy;
         params.sortOrder = filters.sortOrder;
@@ -88,7 +100,7 @@ const EventoList: React.FC = () => {
         pageSize: response.data.pagination.limit,
         total: response.data.pagination.total,
         showSizeChanger: true,
-        pageSizeOptions: ['10', '20', '50', '100'],
+        pageSizeOptions: ["10", "20", "50", "100"],
       });
     } catch (error) {
       message.error("Error al cargar los eventos.");
@@ -102,6 +114,11 @@ const EventoList: React.FC = () => {
     fetchUsuarios();
     fetchEventos();
   }, []);
+
+  // Actualizar eventos cuando los filtros cambian
+  useEffect(() => {
+    fetchEventos();
+  }, [filters]);
 
   // Manejar la eliminación de un evento
   const deleteEvento = async (id: number) => {
@@ -126,9 +143,8 @@ const EventoList: React.FC = () => {
     if (values.usuarioId) newFilters.usuarioId = Number(values.usuarioId);
     if (values.mensaje) newFilters.mensaje = values.mensaje;
     if (values.createdAt) {
-      newFilters.createdAt = values.createdAt[0].toISOString();
-      // Opcional: Si deseas filtrar por un rango completo, necesitarás ajustar la API para aceptar fechas de inicio y fin
-      // newFilters.createdAtTo = values.createdAt[1].toISOString();
+      newFilters.fechaDesde = values.createdAt[0].format("YYYY-MM-DD");
+      newFilters.fechaHasta = values.createdAt[1].format("YYYY-MM-DD");
     }
 
     setFilters(newFilters);
@@ -153,7 +169,7 @@ const EventoList: React.FC = () => {
 
     // Verificar si sorter.field es un array (para campos anidados)
     if (Array.isArray(sorter.field)) {
-      sortBy = sorter.field.join('.'); // Convierte ["usuario", "nombre"] a "usuario.nombre"
+      sortBy = sorter.field.join("."); // Convierte ["usuario", "nombre"] a "usuario.nombre"
     } else if (sorter.field === "usuario") {
       sortBy = "usuario.nombre"; // Mapea "usuario" a "usuario.nombre"
     } else {
@@ -163,16 +179,84 @@ const EventoList: React.FC = () => {
     setFilters((prev) => ({
       ...prev,
       sortBy: sorter.order ? sortBy : undefined,
-      sortOrder: sorter.order === "ascend" ? "asc" : sorter.order === "descend" ? "desc" : undefined,
+      sortOrder:
+        sorter.order === "ascend"
+          ? "asc"
+          : sorter.order === "descend"
+          ? "desc"
+          : undefined,
       page: pagination.current || 1,
       limit: pagination.pageSize || 10,
     }));
   };
 
-  // Actualizar eventos cuando los filtros cambian
-  useEffect(() => {
-    fetchEventos();
-  }, [filters]);
+  // Función para exportar a Excel
+  const exportToExcel = async () => {
+    setExporting(true);
+    setExportModalVisible(true);
+    setExportFetchedPages(0);
+
+    try {
+      // Primero, obtener el total de registros para calcular el número de páginas
+      const initialParams = { ...filters, page: 1, limit: 1 };
+      const initialResponse = await axios.get("/api/eventos", {
+        params: initialParams,
+      });
+      const total = initialResponse.data.pagination.total;
+      const limit = 100; // Usar un límite alto para reducir el número de solicitudes
+      const totalPages = Math.ceil(total / limit);
+      setExportTotalPages(totalPages);
+
+      const allEventos: Evento[] = [];
+
+      // Función para obtener una página específica
+      const fetchPage = async (page: number) => {
+        const params = { ...filters, page, limit };
+        const response = await axios.get("/api/eventos", { params });
+        return response.data.data as Evento[];
+      };
+
+      // Iterar secuencialmente para actualizar el progreso de manera clara
+      for (let page = 1; page <= totalPages; page++) {
+        const data = await fetchPage(page);
+        allEventos.push(...data);
+        setExportFetchedPages(page);
+        setExportProgress(Math.round((page / totalPages) * 100));
+      }
+
+      // Generar el archivo Excel
+      const worksheet = XLSX.utils.json_to_sheet(
+        allEventos.map((item) => ({
+          ID: item.id,
+          Usuario: item.usuario.nombre,
+          Mensaje: item.mensaje,
+          "Fecha Creación": new Date(item.createdAt).toLocaleString(),
+        }))
+      );
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Eventos");
+      const excelBuffer = XLSX.write(workbook, {
+        type: "array",
+        bookType: "xlsx",
+      });
+      const blob = new Blob([excelBuffer], {
+        type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      saveAs(blob, "Eventos.xlsx");
+
+      message.success("Exportación a Excel completada exitosamente.");
+    } catch (error) {
+      message.error("Error al exportar los datos a Excel.");
+      console.error(error);
+    } finally {
+      setExporting(false);
+      setExportModalVisible(false);
+      setExportProgress(0);
+      setExportTotalPages(0);
+      setExportFetchedPages(0);
+    }
+  };
 
   // Definir las columnas con tipos correctos
   const columns: ColumnsType<Evento> = [
@@ -181,7 +265,12 @@ const EventoList: React.FC = () => {
       dataIndex: "id",
       key: "id",
       sorter: true,
-      sortOrder: filters.sortBy === "id" ? (filters.sortOrder === "asc" ? "ascend" : "descend") : undefined,
+      sortOrder:
+        filters.sortBy === "id"
+          ? filters.sortOrder === "asc"
+            ? "ascend"
+            : "descend"
+          : undefined,
     },
     {
       title: "Usuario",
@@ -190,7 +279,9 @@ const EventoList: React.FC = () => {
       sorter: true,
       sortOrder:
         filters.sortBy === "usuario.nombre"
-          ? filters.sortOrder === "asc" ? "ascend" : "descend"
+          ? filters.sortOrder === "asc"
+            ? "ascend"
+            : "descend"
           : undefined,
       render: (_: any, record: Evento) => record.usuario.nombre,
     },
@@ -199,14 +290,24 @@ const EventoList: React.FC = () => {
       dataIndex: "mensaje",
       key: "mensaje",
       sorter: true,
-      sortOrder: filters.sortBy === "mensaje" ? (filters.sortOrder === "asc" ? "ascend" : "descend") : undefined,
+      sortOrder:
+        filters.sortBy === "mensaje"
+          ? filters.sortOrder === "asc"
+            ? "ascend"
+            : "descend"
+          : undefined,
     },
     {
-      title: "Fecha",
+      title: "Fecha Creación",
       dataIndex: "createdAt",
       key: "createdAt",
       sorter: true,
-      sortOrder: filters.sortBy === "createdAt" ? (filters.sortOrder === "asc" ? "ascend" : "descend") : undefined,
+      sortOrder:
+        filters.sortBy === "createdAt"
+          ? filters.sortOrder === "asc"
+            ? "ascend"
+            : "descend"
+          : undefined,
       render: (date: string) => new Date(date).toLocaleString(),
     },
     {
@@ -234,71 +335,79 @@ const EventoList: React.FC = () => {
     <div>
       {/* Formulario de filtros */}
       <Form
-  form={form}
-  layout="vertical" // Cambia a "vertical" para un diseño más limpio
-  onFinish={onFinish}
-  style={{ marginBottom: 16 }}
->
-  <Row gutter={16}>
-    {/* ID */}
-    <Col xs={24} sm={12} md={8} lg={6}>
-      <Form.Item label="ID" name="id">
-        <Input placeholder="ID" type="number" min={1} />
-      </Form.Item>
-    </Col>
+        form={form}
+        layout="vertical" // Cambia a "vertical" para un diseño más limpio
+        onFinish={onFinish}
+        style={{ marginBottom: 16 }}
+      >
+        <Row gutter={16}>
+          {/* ID */}
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Form.Item label="ID" name="id">
+              <Input placeholder="ID" type="number" min={1} />
+            </Form.Item>
+          </Col>
 
-    {/* Usuario */}
-    <Col xs={24} sm={12} md={8} lg={6}>
-      <Form.Item label="Usuario" name="usuarioId">
-        <Select
-          showSearch
-          placeholder="Selecciona un usuario"
-          allowClear
-          style={{ width: '100%' }}
-          optionFilterProp="children"
-          filterOption={(input, option) =>
-            typeof option?.children === 'string' &&
-            // @ts-expect-error not affecting de code
-            option.children.toLowerCase().includes(input.toLowerCase())
-          }
-        >
-          {usuarios.map((usuario) => (
-            <Option key={usuario.id} value={usuario.id}>
-              {usuario.nombre}
-            </Option>
-          ))}
-        </Select>
-      </Form.Item>
-    </Col>
+          {/* Usuario */}
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Form.Item label="Usuario" name="usuarioId">
+              <Select
+                showSearch
+                placeholder="Selecciona un usuario"
+                allowClear
+                style={{ width: "100%" }}
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  typeof option?.children === "string" &&
+                  (option.children as string)
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+              >
+                {usuarios.map((usuario) => (
+                  <Option key={usuario.id} value={usuario.id}>
+                    {usuario.nombre}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
 
-    {/* Mensaje */}
-    <Col xs={24} sm={12} md={8} lg={6}>
-      <Form.Item label="Mensaje" name="mensaje">
-        <Input placeholder="Mensaje" />
-      </Form.Item>
-    </Col>
+          {/* Mensaje */}
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Form.Item label="Mensaje" name="mensaje">
+              <Input placeholder="Mensaje" />
+            </Form.Item>
+          </Col>
 
-    {/* Fecha */}
-    <Col xs={24} sm={12} md={8} lg={6}>
-      <Form.Item label="Fecha" name="createdAt">
-        <RangePicker style={{ width: '100%' }} />
-      </Form.Item>
-    </Col>
-  </Row>
+          {/* Fecha */}
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Form.Item label="Fecha" name="createdAt">
+              <RangePicker style={{ width: "100%" }} />
+            </Form.Item>
+          </Col>
+        </Row>
 
-  <Row>
-    <Col span={24} style={{ textAlign: 'right' }}>
-      <Space>
-        <Button type="primary" htmlType="submit">
-          Filtrar
-        </Button>
-        <Button htmlType="button" onClick={onReset}>
-          Limpiar
-        </Button>
-      </Space>
-    </Col>
-  </Row>
-</Form>
+        <Row>
+          <Col span={24} style={{ textAlign: "right" }}>
+            <Space>
+              <Button type="primary" htmlType="submit">
+                Filtrar
+              </Button>
+              <Button htmlType="button" onClick={onReset}>
+                Limpiar
+              </Button>
+              <Button
+                type="default"
+                onClick={exportToExcel}
+                disabled={exporting}
+              >
+                Exportar a Excel
+              </Button>
+            </Space>
+          </Col>
+        </Row>
+      </Form>
 
       {/* Tabla de eventos */}
       <Table
@@ -309,6 +418,19 @@ const EventoList: React.FC = () => {
         onChange={handleTableChange}
         pagination={pagination}
       />
+
+      {/* Modal de progreso de exportación */}
+      <Modal
+        title="Exportando a Excel"
+        visible={exportModalVisible}
+        footer={null}
+        closable={false}
+      >
+        <p>
+          Exportando registros: {exportFetchedPages} / {exportTotalPages} páginas
+        </p>
+        <Progress percent={exportProgress} />
+      </Modal>
     </div>
   );
 };
