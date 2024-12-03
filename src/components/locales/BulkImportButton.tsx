@@ -2,9 +2,10 @@
 
 import React, { useState } from "react";
 import { Button, Upload, message, Modal } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { UploadOutlined, DownloadOutlined } from "@ant-design/icons"; // Importación del nuevo icono
 import * as XLSX from "xlsx";
 import axios from "axios";
+import { saveAs } from "file-saver"; // Asegúrate de tener instalado 'file-saver'
 
 const BulkImportButton: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -12,6 +13,29 @@ const BulkImportButton: React.FC = () => {
     Array<{ nombre: string; direccion?: string; supermercado?: string }> | null
   >(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  // Función para descargar la plantilla
+  const downloadTemplate = () => {
+    const templateData = [
+      {
+        nombre: "",
+        direccion: "",
+        supermercado: "",
+      },
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Plantilla");
+    const excelBuffer = XLSX.write(workbook, {
+      type: "array",
+      bookType: "xlsx",
+    });
+    const blob = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    saveAs(blob, "Plantilla_Locales.xlsx");
+  };
 
   // Función para procesar el archivo Excel
   const handleFile = (file: File) => {
@@ -37,7 +61,9 @@ const BulkImportButton: React.FC = () => {
           return;
         }
 
-        const headers = jsonData[0] as string[];
+        // Normalizar encabezados a minúsculas y sin espacios
+        const headers = jsonData[0].map((header: any) => header.toString().trim().toLowerCase());
+        console.log("Encabezados encontrados:", headers);
         const rows = jsonData.slice(1);
 
         // Definir los campos requeridos y opcionales
@@ -53,23 +79,36 @@ const BulkImportButton: React.FC = () => {
         }
 
         const locales: Array<{ nombre: string; direccion?: string; supermercado?: string }> = [];
+        let omittedRows = 0; // Contador de filas omitidas
 
         rows.forEach((row, index) => {
           const rowArray = row as any[];
-          const nombre = rowArray[headers.indexOf("nombre")]?.toString().trim();
-          const direccion = headers.includes("direccion") ? rowArray[headers.indexOf("direccion")]?.toString().trim() : undefined;
-          const supermercado = headers.includes("supermercado") ? rowArray[headers.indexOf("supermercado")]?.toString().trim() : undefined;
+          const nombreIndex = headers.indexOf("nombre");
+          const direccionIndex = headers.indexOf("direccion");
+          const supermercadoIndex = headers.indexOf("supermercado");
+
+          const nombre = rowArray[nombreIndex]?.toString().trim();
+          const direccion = direccionIndex !== -1 ? rowArray[direccionIndex]?.toString().trim() : undefined;
+          const supermercado = supermercadoIndex !== -1 ? rowArray[supermercadoIndex]?.toString().trim() : undefined;
 
           if (nombre) {
             locales.push({ nombre, direccion, supermercado });
           } else {
-            message.warning(`Fila ${index + 2} incompleta y será omitida.`);
+            omittedRows += 1; // Incrementar el contador en lugar de mostrar una advertencia
+            console.warn(`Fila ${index + 2} incompleta y será omitida:`, row);
           }
         });
+
+        console.log("Locales procesados:", locales);
 
         if (locales.length === 0) {
           message.error("No se encontraron locales válidos en el archivo.");
           return;
+        }
+
+        // Mostrar un mensaje resumen si hay filas omitidas
+        if (omittedRows > 0) {
+          message.warning(`${omittedRows} fila(s) incompleta(s) fueron omitidas.`);
         }
 
         setPreviewData(locales);
@@ -85,6 +124,7 @@ const BulkImportButton: React.FC = () => {
       message.error("Error al leer el archivo.");
     };
 
+    // Usar readAsArrayBuffer
     reader.readAsArrayBuffer(file);
     return false; // Evita que el componente Upload cargue automáticamente el archivo
   };
@@ -123,6 +163,15 @@ const BulkImportButton: React.FC = () => {
           Importar Locales desde Excel
         </Button>
       </Upload>
+
+      <Button
+        icon={<DownloadOutlined />}
+        type="default"
+        onClick={downloadTemplate}
+        style={{ marginLeft: "10px" }}
+      >
+        Descargar Plantilla
+      </Button>
 
       <Modal
         title="Vista Previa de la Importación"

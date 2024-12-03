@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Button, Upload, message, Modal } from "antd";
+import { Button, Upload, message, Modal, Space } from "antd";
 import { UploadOutlined, DownloadOutlined } from "@ant-design/icons"; // Importación del nuevo icono
 import * as XLSX from "xlsx";
 import axios from "axios";
@@ -150,21 +150,24 @@ const BulkImportButton: React.FC = () => {
 
   return (
     <>
-      <Upload beforeUpload={handleFile} accept=".xlsx, .xls" showUploadList={false}>
-        <Button icon={<UploadOutlined />} type="default" style={{ marginLeft: "10px" }}>
-          Importar desde Excel
+      {/* Componente Space para manejar el espaciado y alineación */}
+      <Space align="start" size="middle" style={{ marginBottom: "16px" }}>
+        <Upload beforeUpload={handleFile} accept=".xlsx, .xls" showUploadList={false}>
+          <Button icon={<UploadOutlined />} type="default">
+            Importar desde Excel
+          </Button>
+        </Upload>
+
+        <Button
+          icon={<DownloadOutlined />}
+          type="default"
+          onClick={downloadTemplate}
+        >
+          Descargar Plantilla
         </Button>
-      </Upload>
+      </Space>
 
-      <Button
-        icon={<DownloadOutlined />}
-        type="default"
-        onClick={downloadTemplate}
-        style={{ marginLeft: "10px" }}
-      >
-        Descargar Plantilla
-      </Button>
-
+      {/* Resto de tu código existente */}
       <Modal
         title="Vista Previa de la Importación"
         visible={isModalVisible}
