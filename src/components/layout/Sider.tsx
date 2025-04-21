@@ -35,9 +35,9 @@ const AppSider: React.FC<AppSiderProps> = ({ collapsed }) => {
 
   const menuItems = [
     {
-      key: "/dashboard",
+      key: "/orders",
       icon: <DashboardOutlined />,
-      label: <Link href="/dashboard">Dashboard</Link>,
+      label: <Link href="/orders">Orders</Link>,
     },
   
     {
@@ -45,31 +45,7 @@ const AppSider: React.FC<AppSiderProps> = ({ collapsed }) => {
       icon: <UserOutlined />,
       label: <Link href="/usuarios">Usuarios</Link>,
     },
-    {
-      key: "/locales",
-      icon: <ShopOutlined />,
-      label: <Link href="/locales">Locales</Link>,
-    },
-    {
-      key: "/asistencias",
-      icon: <CalendarOutlined />,
-      label: <Link href="/asistencias">Asistencias</Link>,
-    },
-    {
-      key: "/vouchers",
-      icon: <FileTextOutlined />,
-      label: <Link href="/vouchers">Vouchers</Link>,
-    },
-    {
-      key: "/eventos",
-      icon: <FileSearchOutlined />,
-      label: <Link href="/eventos">Eventos</Link>,
-    },
-    {
-      key: "/items", // Nuevo ítem agregado
-      icon: <AppstoreOutlined />,
-      label: <Link href="/items">Items</Link>,
-    },
+    
    
   ];
 

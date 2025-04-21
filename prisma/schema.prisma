@@ -1,7 +1,7 @@
 // prisma/schema.prisma
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -9,80 +9,39 @@ generator client {
   provider = "prisma-client-js"
 }
 
+
 model Usuario {
   id         Int          @id @default(autoincrement())
   nombre     String
   email      String       @unique
   password   String
   roles      String
-  asistencia Asistencia[]
-  vouchers   Voucher[]
-  eventos    Evento[]
+
 }
 
-model Local {
-  id         Int          @id @default(autoincrement())
-  nombre     String
-  direccion  String?
-  supermercado String?
-  asistencia Asistencia[]
-  vouchers   Voucher[]
-}
 
-model Asistencia {
-  id                 Int          @id @default(autoincrement())
-  usuario            Usuario      @relation(fields: [usuarioId], references: [id])
-  usuarioId          Int
-  local              Local        @relation(fields: [localId], references: [id])
-  localId            Int
-  checkInTime        DateTime
-  checkInGeoLocation String
-  checkOutTime       DateTime?
-  checkOutGeoLocation String?
-}
 
-model Voucher {
-  id          Int           @id @default(autoincrement())
-  tipo        String
-  usuario     Usuario       @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
-  usuarioId   Int
-  local       Local         @relation(fields: [localId], references: [id], onDelete: Cascade)
-  localId     Int
-  createdAt   DateTime      @default(now())
-  voucherLines VoucherLine[] // No defines onDelete aquí
-  fotos       Foto[]         // No defines onDelete aquí
-}
+model OmOrderGridV {
+  id               Int      @id
+  order_nbr        String
+  order_type       String
+  status           Int
+  priority         Int
+  hold_flag        String?
+  consignee_id     Int?
+  currency_code    String?
+  order_value      Float?
+  incoterm_code    String?
+  transport_mode   String?
+  service_level    String?
+  channel_code     String?
+  ship_window_from DateTime?
+  ship_window_to   DateTime?
+  deliv_window_to  DateTime?
+  create_date      DateTime
+  line_count       Int?
+  total_qty        Float?
 
-model VoucherLine {
-  id         Int          @id @default(autoincrement())
-  voucher    Voucher      @relation(fields: [voucherId], references: [id], onDelete: Cascade) // Aquí configuras onDelete
-  voucherId  Int
-  item       Item         @relation(fields: [itemId], references: [id])
-  itemId     Int
-  cantidad   Int
-  precio     Float?
+  @@map("om_order_grid_v")
+  @@ignore  // marca que no intente mutar la vista
 }
-
-model Item {
-  id          Int           @id @default(autoincrement())
-  nombre      String
-  itemCode    String         @unique
-  voucherLines VoucherLine[] // Relación inversa hacia VoucherLine
-}
-
-model Foto {
-  id        Int          @id @default(autoincrement())
-  voucher   Voucher      @relation(fields: [voucherId], references: [id], onDelete: Cascade) // Aquí configuras onDelete
-  voucherId Int
-  url       String
-  createdAt DateTime     @default(now())
-}
-
-model Evento {
-  id        Int          @id @default(autoincrement())
-  usuario   Usuario      @relation(fields: [usuarioId], references: [id])
-  usuarioId Int
-  mensaje   String
-  createdAt DateTime     @default(now())
-}
-
