@@ -1,49 +1,32 @@
+// src/app/dashboard/page.tsx (dashboard simple con Ant Design Statistic)
+
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Row, Col, message } from "antd";
-import {
-  UserOutlined,
-  ShopOutlined,
-  FileTextOutlined,
-  FileSearchOutlined,
-} from "@ant-design/icons";
-
-import { SummaryData } from "@/types/types";
-import axios from "axios";
-import AsistenciaReport from "@/components/dashboard/AsistenciaReport";
-import SummaryCard from "@/components/dashboard/SummaryCard";
+import React from "react";
+import { Row, Col, Card, Statistic } from "antd";
 
 const DashboardPage: React.FC = () => {
-  const [summary, setSummary] = useState<SummaryData | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-
-  const fetchSummary = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.get("/api/dashboard/summary");
-      setSummary(response.data);
-    } catch (error) {
-      message.error("Error al cargar el resumen.");
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
+  // Datos de ejemplo
+  const summary = {
+    users: 123,
+    orders: 45,
   };
 
-  useEffect(() => {
-    fetchSummary();
-  }, []);
-
   return (
-    <div style={{ padding: "20px" }}>
+    <div style={{ padding: 20 }}>
       <Row gutter={[16, 16]}>
-        
-      </Row>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic title="Usuarios" value={summary.users} />
+          </Card>
+        </Col>
 
-      <div style={{ marginTop: "40px" }}>
-        <AsistenciaReport />
-      </div>
+        <Col xs={24} sm={12} md={6}>
+          <Card>
+            <Statistic title="OM Orders" value={summary.orders} />
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 };
