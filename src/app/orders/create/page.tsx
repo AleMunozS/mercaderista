@@ -207,7 +207,7 @@ export default function CreateOrderPage() {
                       optionFilterProp="children"
                       onChange={value => fetchUoms(value, name)}
                       filterOption={(input, option) =>
-                        (option?.children as string).toLowerCase().includes(input.toLowerCase())
+                        (option?.children as unknown as string).toLowerCase().includes(input.toLowerCase())
                       }
                     >
                       {items.map(it => (
