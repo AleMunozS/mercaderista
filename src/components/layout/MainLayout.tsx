@@ -9,8 +9,8 @@ import { Content } from "antd/es/layout/layout";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 
 export const metadata = {
-  title: "Administración de Mercaderistas Agropack",
-  description: "Administración de Mercaderistas Agropack",
+  title: "Minera Poderosa",
+  description: "Minera Poderosa",
 };
 
 export default function RootLayout({

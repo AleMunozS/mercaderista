@@ -46,7 +46,7 @@ const AppHeader: React.FC<AppHeaderProps> = ({ toggleSidebar }) => {
         style={{ marginRight: "16px" }}
       />
       <Title level={3} style={{ color: "#fff", margin: 0 }}>
-        Administración de Mercaderistas Agropack
+        Minera Poderosa
       </Title>
       <Button
         type="primary"
